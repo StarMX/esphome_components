@@ -1,0 +1,197 @@
+import esphome.codegen as cg
+import esphome.config_validation as cv
+from esphome.components import binary_sensor
+from esphome.const import CONF_UID, CONF_ID, CONF_TYPE, ICON_POWER, DEVICE_CLASS_PLUG, DEVICE_CLASS_RUNNING, DEVICE_CLASS_COLD, DEVICE_CLASS_BATTERY_CHARGING, DEVICE_CLASS_BATTERY, DEVICE_CLASS_HEAT, ENTITY_CATEGORY_DIAGNOSTIC, DEVICE_CLASS_PROBLEM
+
+from .. import axp192_ns, Axp192Component, CONF_AXP192_ID
+
+DEPENDENCIES = ['axp192','binary_sensor']
+
+Axp192BinarySensor = axp192_ns.class_('Axp192BinarySensor', cg.Component)
+
+CONF_ACIN_PRESENT = 'acin_present'
+CONF_ACIN_VALID = 'acin_valid'
+CONF_VBUS_PRESENT = 'vbus_present'
+CONF_VBUS_VALID = 'vbus_valid'
+CONF_VBUS_ABOVE = 'vbus_above'
+CONF_BATTERY_CURRENT_DIRECTION = 'battery_current_direction'
+CONF_ACIN_VBUS_SHORT = 'acin_vbus_short'
+CONF_ACIN_VBUS_TRIGGER_BOOT = 'acin_vbus_trigger_boot'
+CONF_AXP_OVER_TEMP = 'axp_over_temp'
+CONF_CHARGE_INDICATE = 'charge_indicate'
+CONF_BATTERY_PRESENT = 'battery_present'
+CONF_BATTERY_ACTIVE = 'battery_active'
+CONF_CHARGE_CURRENT_LOW = 'charge_current_low'
+
+CONF_ACIN_OVER_VOLTAGE_IRQ = 'acin_over_voltage_irq'
+CONF_ACIN_INSERTED_IRQ = 'acin_inserted_irq'
+CONF_ACIN_REMOVED_IRQ = 'acin_removed_irq'
+CONF_VBUS_OVER_VOLTAGE_IRQ = 'vbus_over_voltage_irq'
+CONF_VBUS_INSERTED_IRQ = 'vbus_inserted_irq'
+CONF_VBUS_REMOVED_IRQ = 'vbus_removed_irq'
+CONF_VBUS_LOW_IRQ = 'vbus_low_irq'
+CONF_BATTERY_INSERTED_IRQ = 'battery_inserted_irq'
+CONF_BATTERY_REMOVED_IRQ = 'battery_removed_irq'
+CONF_BATTERY_ACTIVATED_IRQ = 'battery_activated_irq'
+CONF_BATTERY_DEACTIVATED_IRQ = 'battery_deactivated_irq'
+CONF_CHARGING_STARTED_IRQ = 'charging_started_irq'
+CONF_CHARGING_FINISHED_IRQ = 'charging_finished_irq'
+CONF_BATTERY_OVER_TEMP_IRQ = 'battery_over_temp_irq'
+CONF_BATTERY_UNDER_TEMP_IRQ = 'battery_under_temp_irq'
+CONF_AXP_OVER_TEMP_IRQ = 'axp_over_temp_irq'
+CONF_LOW_CHARGE_CURRENT_IRQ = 'low_charge_current_irq'
+CONF_DCDC1_UNDER_VOLTAGE_IRQ = 'dcdc1_under_voltage_irq'
+CONF_DCDC2_UNDER_VOLTAGE_IRQ = 'dcdc2_under_voltage_irq'
+CONF_DCDC3_UNDER_VOLTAGE_IRQ = 'dcdc3_under_voltage_irq'
+CONF_SHORT_KEY_PRESS_IRQ = 'short_key_press_irq'
+CONF_LONG_KEY_PRESS_IRQ = 'long_key_press_irq'
+CONF_POWERON_NOE_IRQ = 'poweron_noe_irq'
+CONF_POWEROFF_NOE_IRQ = 'poweroff_noe_irq'
+CONF_VBUS_VALID_IRQ = 'vbus_valid_irq'
+CONF_VBUS_INVALID_IRQ = 'vbus_invalid_irq'
+CONF_VBUS_SESSION_AB_IRQ = 'vbus_session_ab_irq'
+CONF_VBUS_SESSION_END_IRQ = 'vbus_session_end_irq'
+CONF_APS_UNDER_VOLTAGE_IRQ = 'aps_under_voltage_irq'
+
+monitor_type = axp192_ns.enum('MonitorType', is_class=True)
+MONITOR_TYPE = {
+    CONF_ACIN_PRESENT: monitor_type.ACIN_PRESENT,
+    CONF_ACIN_VALID: monitor_type.ACIN_VALID,
+    CONF_VBUS_PRESENT: monitor_type.VBUS_PRESENT,
+    CONF_VBUS_VALID: monitor_type.VBUS_VALID,
+    CONF_VBUS_ABOVE: monitor_type.VBUS_ABOVE,
+    CONF_BATTERY_CURRENT_DIRECTION: monitor_type.BATTERY_CURRENT_DIRECTION,
+    CONF_ACIN_VBUS_SHORT: monitor_type.ACIN_VBUS_SHORT,
+    CONF_ACIN_VBUS_TRIGGER_BOOT: monitor_type.ACIN_VBUS_TRIGGER_BOOT,
+    CONF_AXP_OVER_TEMP: monitor_type.AXP_OVER_TEMP,
+    CONF_CHARGE_INDICATE: monitor_type.CHARGE_INDICATE,
+    CONF_BATTERY_PRESENT: monitor_type.BATTERY_PRESENT,
+    CONF_BATTERY_ACTIVE: monitor_type.BATTERY_ACTIVE,
+    CONF_CHARGE_CURRENT_LOW: monitor_type.CHARGE_CURRENT_LOW,
+}
+
+irq_type = axp192_ns.enum('IrqType', is_class=True)
+IRQ_TYPE = {
+    CONF_ACIN_OVER_VOLTAGE_IRQ: irq_type.ACIN_OVER_VOLTAGE,
+    CONF_ACIN_INSERTED_IRQ: irq_type.ACIN_INSERTED,
+    CONF_ACIN_REMOVED_IRQ: irq_type.ACIN_REMOVED,
+    CONF_VBUS_OVER_VOLTAGE_IRQ: irq_type.VBUS_OVER_VOLTAGE,
+    CONF_VBUS_INSERTED_IRQ: irq_type.VBUS_INSERTED,
+    CONF_VBUS_REMOVED_IRQ: irq_type.VBUS_REMOVED,
+    CONF_VBUS_LOW_IRQ: irq_type.VBUS_LOW,
+    CONF_BATTERY_INSERTED_IRQ: irq_type.BATTERY_INSERTED,
+    CONF_BATTERY_REMOVED_IRQ: irq_type.BATTERY_REMOVED,
+    CONF_BATTERY_ACTIVATED_IRQ: irq_type.BATTERY_ACTIVATED,
+    CONF_BATTERY_DEACTIVATED_IRQ: irq_type.BATTERY_DEACTIVATED,
+    CONF_CHARGING_STARTED_IRQ: irq_type.CHARGING_STARTED,
+    CONF_CHARGING_FINISHED_IRQ: irq_type.CHARGING_FINISHED,
+    CONF_BATTERY_OVER_TEMP_IRQ: irq_type.BATTERY_OVER_TEMP,
+    CONF_BATTERY_UNDER_TEMP_IRQ: irq_type.BATTERY_UNDER_TEMP,
+    CONF_AXP_OVER_TEMP_IRQ: irq_type.AXP_OVER_TEMP,
+    CONF_LOW_CHARGE_CURRENT_IRQ: irq_type.LOW_CHARGE_CURRENT,
+    CONF_DCDC1_UNDER_VOLTAGE_IRQ: irq_type.DCDC1_UNDER_VOLTAGE,
+    CONF_DCDC2_UNDER_VOLTAGE_IRQ: irq_type.DCDC2_UNDER_VOLTAGE,
+    CONF_DCDC3_UNDER_VOLTAGE_IRQ: irq_type.DCDC3_UNDER_VOLTAGE,
+    CONF_SHORT_KEY_PRESS_IRQ: irq_type.SHORT_KEY_PRESS,
+    CONF_LONG_KEY_PRESS_IRQ: irq_type.LONG_KEY_PRESS,
+    CONF_POWERON_NOE_IRQ: irq_type.POWERON_NOE,
+    CONF_POWEROFF_NOE_IRQ: irq_type.POWEROFF_NOE,
+    CONF_VBUS_VALID_IRQ: irq_type.VBUS_VALID,
+    CONF_VBUS_INVALID_IRQ: irq_type.VBUS_INVALID,
+    CONF_VBUS_SESSION_AB_IRQ: irq_type.VBUS_SESSION_AB,
+    CONF_VBUS_SESSION_END_IRQ: irq_type.VBUS_SESSION_END,
+    CONF_APS_UNDER_VOLTAGE_IRQ: irq_type.APS_UNDER_VOLTAGE,
+}
+
+TYPES = {
+    CONF_ACIN_PRESENT : DEVICE_CLASS_PLUG,
+    CONF_ACIN_VALID : DEVICE_CLASS_PROBLEM,
+    CONF_VBUS_PRESENT : DEVICE_CLASS_PLUG,
+    CONF_VBUS_VALID : DEVICE_CLASS_PROBLEM,
+    CONF_VBUS_ABOVE : DEVICE_CLASS_PROBLEM,
+    CONF_BATTERY_CURRENT_DIRECTION : DEVICE_CLASS_BATTERY_CHARGING,
+    CONF_ACIN_VBUS_SHORT : DEVICE_CLASS_PROBLEM,
+    CONF_ACIN_VBUS_TRIGGER_BOOT : DEVICE_CLASS_PROBLEM,
+    CONF_AXP_OVER_TEMP : DEVICE_CLASS_HEAT,
+    CONF_CHARGE_INDICATE : DEVICE_CLASS_BATTERY_CHARGING,
+    CONF_BATTERY_PRESENT : DEVICE_CLASS_PLUG,
+    CONF_BATTERY_ACTIVE : DEVICE_CLASS_RUNNING,
+    CONF_CHARGE_CURRENT_LOW : DEVICE_CLASS_PROBLEM,
+}
+
+IRQ_TYPES = {
+    CONF_ACIN_OVER_VOLTAGE_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_ACIN_INSERTED_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_ACIN_REMOVED_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_VBUS_OVER_VOLTAGE_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_VBUS_INSERTED_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_VBUS_REMOVED_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_VBUS_LOW_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_BATTERY_INSERTED_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_BATTERY_REMOVED_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_BATTERY_ACTIVATED_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_BATTERY_DEACTIVATED_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_CHARGING_STARTED_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_CHARGING_FINISHED_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_BATTERY_OVER_TEMP_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_BATTERY_UNDER_TEMP_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_AXP_OVER_TEMP_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_LOW_CHARGE_CURRENT_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_DCDC1_UNDER_VOLTAGE_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_DCDC2_UNDER_VOLTAGE_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_DCDC3_UNDER_VOLTAGE_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_SHORT_KEY_PRESS_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_LONG_KEY_PRESS_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_POWERON_NOE_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_POWEROFF_NOE_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_VBUS_VALID_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_VBUS_INVALID_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_VBUS_SESSION_AB_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_VBUS_SESSION_END_IRQ : DEVICE_CLASS_RUNNING,
+    CONF_APS_UNDER_VOLTAGE_IRQ : DEVICE_CLASS_RUNNING,
+}
+
+
+TYPE_SCHEMAS = dict([
+    key,
+    binary_sensor.binary_sensor_schema(
+        device_class=value,
+        entity_category=ENTITY_CATEGORY_DIAGNOSTIC
+    ).extend(
+        {
+            cv.GenerateID(): cv.declare_id(Axp192BinarySensor),
+            cv.Required(CONF_AXP192_ID): cv.use_id(Axp192Component),
+        }
+    )
+] for key, value in TYPES.items())
+TYPE_SCHEMAS.update(dict([
+    key,
+    binary_sensor.binary_sensor_schema(
+        device_class=value,
+        entity_category=ENTITY_CATEGORY_DIAGNOSTIC
+    ).extend(
+        {
+            cv.GenerateID(): cv.declare_id(Axp192BinarySensor),
+            cv.Required(CONF_AXP192_ID): cv.use_id(Axp192Component),
+        }
+    )
+] for key, value in IRQ_TYPES.items()))
+
+CONFIG_SCHEMA = cv.typed_schema(
+    TYPE_SCHEMAS,
+    lower=True,
+    key=CONF_TYPE
+)
+
+
+async def to_code(config):
+    var = cg.new_Pvariable(config[CONF_ID])
+    await cg.register_parented(var, config[CONF_AXP192_ID])
+    type = config[CONF_TYPE]
+    if type in IRQ_TYPE:
+        print(type)
+        cg.add(var.set_sensor(IRQ_TYPE[type]))
+    else:
+        cg.add(var.set_sensor(MONITOR_TYPE[type]))
+    await binary_sensor.register_binary_sensor(var, config)
+    await cg.register_component(var, config)
