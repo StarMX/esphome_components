@@ -346,20 +346,20 @@ class Axp192Component : public i2c::I2CDevice, public PollingComponent {
   void update_powercontrol(OutputPin pin, bool value);
 
  protected:
-#ifdef USE_SENSOR
+#ifdef USE_AXP92_SENSOR
   std::map<SensorType, Axp192Sensor *> sensors_{};
 #endif
 
-#ifdef USE_BINARY_SENSOR
+#ifdef USE_AXP92_BINARY_SENSOR
   std::map<MonitorType, Axp192BinarySensor *> monitors_{};
   std::map<IrqType, Axp192BinarySensor *> irqs_{};
 #endif
 
-#ifdef USE_OUTPUT
+#ifdef USE_AXP92_OUTPUT
   std::map<OutputPin, Axp192Output *> output_control_{};
 #endif
 
-#ifdef USE_SWITCH
+#ifdef USE_AXP92_SWITCH
   std::map<OutputPin, Axp192Switch *> power_control_{};
 #endif
 
@@ -414,7 +414,7 @@ class Axp192Component : public i2c::I2CDevice, public PollingComponent {
 
   void publish_helper_(IrqType type, bool state);
   void publish_helper_(MonitorType type, bool state);
-#ifdef USE_BINARY_SENSOR
+#ifdef USE_AXP92_BINARY_SENSOR
   void do_irqs_();
   uint32_t last_irq_buffer_ = 0xFF;
 #endif

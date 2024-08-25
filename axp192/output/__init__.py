@@ -25,4 +25,6 @@ async def to_code(config):
     if CONF_VOLTAGE in config:
         cg.add(var.set_voltage(config[CONF_VOLTAGE]))
     await output.register_output(var, config)
-    return var
+    # return var
+    await cg.register_component(var, config)
+    cg.add_define("USE_AXP92_OUTPUT")

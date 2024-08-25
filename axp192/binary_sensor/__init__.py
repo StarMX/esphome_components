@@ -195,3 +195,4 @@ async def to_code(config):
         cg.add(var.set_sensor(MONITOR_TYPE[type]))
     await binary_sensor.register_binary_sensor(var, config)
     await cg.register_component(var, config)
+    cg.add_define("USE_AXP92_BINARY_SENSOR")

@@ -163,3 +163,4 @@ async def to_code(config):
     await cg.register_parented(var, config[CONF_AXP192_ID])
     cg.add(var.set_sensor(SENSOR_TYPE[config[CONF_TYPE]]))
     await cg.register_component(var, config)
+    cg.add_define("USE_AXP92_SENSOR")
