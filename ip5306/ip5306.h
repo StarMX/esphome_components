@@ -8,7 +8,7 @@
 namespace esphome {
 namespace ip5306 {
 
-class IP5306 : public i2c::I2CDevice, public Component {
+class IP5306 : public i2c::I2CDevice, public PollingComponent {
  public:
   void setup() override;
   void loop() override;

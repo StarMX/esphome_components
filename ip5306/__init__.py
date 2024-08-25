@@ -24,7 +24,7 @@ CONFIG_SCHEMA = cv.COMPONENT_SCHEMA.extend(
         cv.Optional(CONF_CHARGER_CONNECTED): binary_sensor.binary_sensor_schema(),
         cv.Optional(CONF_CHARGE_FULL): binary_sensor.binary_sensor_schema(),
     }
-).extend(i2c.i2c_device_schema(0x75))
+).extend(i2c.i2c_device_schema(0x75)).extend(cv.polling_component_schema('60s'))
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
