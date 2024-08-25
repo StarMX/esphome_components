@@ -307,8 +307,8 @@ void Axp192Component::set_disable_ldo2(bool disable_ldo2) {
   this->update_register(RegisterLocations::DCDC13_LDO23_CONTROL, disable_ldo2 ? 0x0 : 0b00000100, 0b11111011);
 }
 
-void Axp192Component::set_disable_ldo3(bool disable_ldo3) {
-  this->update_register(RegisterLocations::DCDC13_LDO23_CONTROL, disable_ldo3 ? 0x0 : 0b00001000, 0b11111100);
+void Axp192Component::set_disable_ldo3(bool disable_ldo3) { // (1 << 3) , 255 & ~(1 << 3)
+  this->update_register(RegisterLocations::DCDC13_LDO23_CONTROL, disable_ldo3 ? 0x0 : 0b00001000, 0b11110111);
 }
 
 void Axp192Component::set_disable_dcdc1(bool disable_dcdc1) {
