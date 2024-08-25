@@ -1,18 +1,18 @@
 #include "axp192_component.h"
 
-#ifdef USE_BINARY_SENSOR
+#ifdef USE_AXP92_BINARY_SENSOR
 #include "binary_sensor/axp192_binary_sensor.h"
 #endif
 
-#ifdef USE_OUTPUT
+#ifdef USE_AXP92_OUTPUT
 #include "output/axp192_output.h"
 #endif
 
-#ifdef USE_SENSOR
+#ifdef USE_AXP92_SENSOR
 #include "sensor/axp192_sensor.h"
 #endif
 
-#ifdef USE_SWITCH
+#ifdef USE_AXP92_SWITCH
 #include "switch/axp192_switch.h"
 #endif
 
@@ -81,7 +81,7 @@ void Axp192Component::update() {
   this->update_powercontrol(OutputPin::OUTPUT_DCDC3, this->get_dcdc3_enabled());
   this->update_powercontrol(OutputPin::OUTPUT_LDOIO0, this->get_ldoio0_enabled());
 
-#ifdef USE_BINARY_SENSOR
+#ifdef USE_AXP92_BINARY_SENSOR
   if (!this->monitors_.empty()) {
     {
       auto buffer = this->read_bytes<4>(0x0);
@@ -134,7 +134,7 @@ void Axp192Component::update() {
     }
   }
 #endif
-#ifdef USE_SENSOR
+#ifdef USE_AXP92_SENSOR
   if (!this->sensors_.empty()) {
     ESP_LOGV(this->get_component_source(), "Value sensors:");
     // Scale values from section 9.7
@@ -249,7 +249,7 @@ void Axp192Component::update() {
 
 void Axp192Component::loop() {
   // IRQ triggers
-#ifdef USE_BINARY_SENSORS
+#ifdef USE_AXP92_BINARY_SENSORS
   this->do_irqs_();
 #endif
 }
@@ -303,7 +303,7 @@ void Axp192Component::set_disable_rtc(bool disable_rtc) {
   this->update_register(RegisterLocations::BATTERY_BACKUP_CONTROL, disable_rtc ? 0x0 : 0b10000000, 0b11000111);
 }
 
-void Axp192Component::set_disable_ldo2(bool disable_ldo2) {
+void Axp192Component::set_disable_ldo2(bool disable_ldo2) { // (1 << 2) , 255 & ~(1 << 2)
   this->update_register(RegisterLocations::DCDC13_LDO23_CONTROL, disable_ldo2 ? 0x0 : 0b00000100, 0b11111011);
 }
 
@@ -311,11 +311,11 @@ void Axp192Component::set_disable_ldo3(bool disable_ldo3) { // (1 << 3) , 255 & 
   this->update_register(RegisterLocations::DCDC13_LDO23_CONTROL, disable_ldo3 ? 0x0 : 0b00001000, 0b11110111);
 }
 
-void Axp192Component::set_disable_dcdc1(bool disable_dcdc1) {
+void Axp192Component::set_disable_dcdc1(bool disable_dcdc1) { // (1 << 1), 255 & ~(1 << 1)
   this->update_register(RegisterLocations::DCDC13_LDO23_CONTROL, disable_dcdc1 ? 0x0 : 0b00000010, 0b11111101);
 }
 
-void Axp192Component::set_disable_dcdc3(bool disable_dcdc3) {
+void Axp192Component::set_disable_dcdc3(bool disable_dcdc3) { // (1 << 0) , 255 & ~(1 << 0)
   this->update_register(RegisterLocations::DCDC13_LDO23_CONTROL, disable_dcdc3 ? 0x0 : 0b00000001, 0b11111110);
 }
 
@@ -400,7 +400,7 @@ bool Axp192Component::configure_dcdc3(bool enable) {
 }
 
 bool Axp192Component::configure_ldoio0(bool enable) {
-#ifdef USE_SWITCH
+#ifdef USE_AXP92_SWITCH
   auto location = this->power_control_.find(OutputPin::OUTPUT_LDOIO0);
   this->load_register(RegisterLocations::GPIO_CONTROL);
   this->set_ldoio0_mode(enable ? LDOio0Control::LOWNOISE_LDO : LDOio0Control::FLOATING);
@@ -552,7 +552,7 @@ bool Axp192Component::configure_dcdc2(bool enable) {
   return this->save_register(RegisterLocations::EXTEN_DCDC2_CONTROL);
 }
 
-#ifdef USE_BINARY_SENSOR
+#ifdef USE_AXP92_BINARY_SENSOR
 void Axp192Component::do_irqs_() {
   // Read all IRQ registers at once
   auto buffer = this->read_bytes<4>(detail::to_int(RegisterLocations::IRQ_STATUS_REGISTER1));
@@ -633,7 +633,7 @@ void Axp192Component::enable_irq(IrqType irq) {
 #endif
 
 void Axp192Component::update_powercontrol(OutputPin pin, bool value) {
-#ifdef USE_SWITCH
+#ifdef USE_AXP92_SWITCH
   if (this->power_control_.empty())
     return;
 
@@ -645,7 +645,7 @@ void Axp192Component::update_powercontrol(OutputPin pin, bool value) {
 }
 
 void Axp192Component::publish_helper_(SensorType type, float state) {
-#ifdef USE_SENSOR
+#ifdef USE_AXP92_SENSOR
   auto sensor = this->sensors_.find(type);
   if (sensor != this->sensors_.end()) {
     sensor->second->publish_state(state);
@@ -654,7 +654,7 @@ void Axp192Component::publish_helper_(SensorType type, float state) {
 }
 
 void Axp192Component::publish_helper_(IrqType type, bool state) {
-#ifdef USE_BINARY_SENSOR
+#ifdef USE_AXP92_BINARY_SENSOR
   auto sensor = this->irqs_.find(type);
   if (sensor != this->irqs_.end()) {
     sensor->second->publish_state(state);
@@ -663,7 +663,7 @@ void Axp192Component::publish_helper_(IrqType type, bool state) {
 }
 
 void Axp192Component::publish_helper_(MonitorType type, bool state) {
-#ifdef USE_BINARY_SENSOR
+#ifdef USE_AXP92_BINARY_SENSOR
   auto sensor = this->monitors_.find(type);
   if (sensor != this->monitors_.end()) {
     sensor->second->publish_state(state);
@@ -672,31 +672,31 @@ void Axp192Component::publish_helper_(MonitorType type, bool state) {
 }
 
 void Axp192Component::register_irq(IrqType type, Axp192BinarySensor *irq) {
-#ifdef USE_BINARY_SENSOR
+#ifdef USE_AXP92_BINARY_SENSOR
   irqs_.insert(std::make_pair(type, irq));
 #endif
 }
 
 void Axp192Component::register_sensor(SensorType type, Axp192Sensor *sensor) {
-#ifdef USE_SENSOR
+#ifdef USE_AXP92_SENSOR
   sensors_.insert(std::make_pair(type, sensor));
 #endif
 }
 
 void Axp192Component::register_output(OutputPin pin, Axp192Output *output) {
-#ifdef USE_OUTPUT
+#ifdef USE_AXP92_OUTPUT
   output_control_.insert(std::make_pair(pin, output));
 #endif
 }
 
 void Axp192Component::register_switch(OutputPin pin, Axp192Switch *output) {
-#ifdef USE_SWITCH
+#ifdef USE_AXP92_SWITCH
   power_control_.insert(std::make_pair(pin, output));
 #endif
 }
 
 void Axp192Component::register_monitor(MonitorType type, Axp192BinarySensor *monitor) {
-#ifdef USE_BINARY_SENSOR
+#ifdef USE_AXP92_BINARY_SENSOR
   monitors_.insert(std::make_pair(type, monitor));
 #endif
 }
