@@ -4,20 +4,20 @@
 namespace esphome {
 namespace template {
 
-static const char *TAG = "LORA";
+static const char *TAG = "TEMPLATE";
 
-void LoraComponent::setup() {
+void TemplateComponent::setup() {
     
 }
-void LoraComponent::dump_config() {
+void TemplateComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "template:");
 }
 
-void LoraComponent::update() {
+void TemplateComponent::update() {
     ESP_LOGI(TAG, "template update");
 }
 
-void LoraComponent::loop() {
+void TemplateComponent::loop() {
     this->data_received_callback_.call(message_);
 }
 
@@ -25,6 +25,6 @@ void TemplateComponent::send(const std::string &message) {
     ESP_LOGV(TAG, "Send %s", message);
 }
 
-float LoraComponent::get_setup_priority() const { return setup_priority::HARDWARE; };
+float TemplateComponent::get_setup_priority() const { return setup_priority::HARDWARE; };
 }
 }
