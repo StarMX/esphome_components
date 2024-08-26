@@ -21,10 +21,9 @@ CONFIG_SCHEMA = output.FLOAT_OUTPUT_SCHEMA.extend(
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_parented(var, config[CONF_AXP192_ID])
+    await output.register_output(var, config)
+    
     cg.add(var.set_output(config[CONF_OUTPUT]))
     if CONF_VOLTAGE in config:
         cg.add(var.set_voltage(config[CONF_VOLTAGE]))
-    await output.register_output(var, config)
-    # return var
-    await cg.register_component(var, config)
     cg.add_define("USE_AXP92_OUTPUT")

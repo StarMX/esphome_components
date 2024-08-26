@@ -61,6 +61,8 @@ void Axp192Component::dump_config() {
   ESP_LOGCONFIG(this->get_component_source(), "AXP192:");
   LOG_I2C_DEVICE(this);
   LOG_UPDATE_INTERVAL(this);
+  if (this->is_failed())
+    ESP_LOGE(TAG, "Communication with AXP192 failed!");
   ESP_LOGCONFIG(this->get_component_source(), "Registers:");
   for (auto reg : this->registers_) {
     ESP_LOGCONFIG(this->get_component_source(), "  %s %s", detail::to_hex(reg.first).c_str(),
@@ -209,42 +211,6 @@ void Axp192Component::update() {
     }
   }
 #endif
-
-  /*
-  if (this->batterylevel_sensor_ != nullptr) {
-    // To be fixed
-    // This is not giving the right value - mostly there to have some sample sensor...
-    float vbat = axp_->GetBatVoltage();
-    float batterylevel = 100.0 * ((vbat - 3.0) / (4.1 - 3.0));
-    ESP_LOGD(this->get_component_source(), "Got Battery Level=%f (%f)", batterylevel, vbat);
-    if (batterylevel > 100.) {
-      batterylevel = 100;
-    }
-    this->batterylevel_sensor_->publish_state(batterylevel);
-  }
-
-  auto input_status = axp_->GetInputPowerStatus();
-  auto power_status = axp_->GetBatteryChargingStatus();
-  bool ac_in = input_status & 0b10000000;
-  bool vbus_in = input_status & 0b00100000;
-  bool bat_charge = input_status & 0b00000100;
-  bool axp_overtemp = power_status & 0b10000000;
-  bool charge_req = power_status & 0b01000000;
-  bool bat_active = power_status & 0b00001000;
-
-  // iterate sensors_ publish value
-  if (sensors_.contains("battery_current")) {
-    sensors_.at("battery_current")->
-  }
-  ESP_LOGD(
-      this->get_component_source(),
-      "input: %x, power: %x, ac_in: %d, vbus_in: %d, bat_charge: %d, axp_overtemp: %d, charge_req: %d, bat_active: %d",
-      input_status, power_status, ac_in, vbus_in, bat_charge, axp_overtemp, charge_req, bat_active);
-
-  ESP_LOGD(this->get_component_source(), "Col in: %u Col out: %u Charge: %fmAh cin: %f batc: %f",
-  axp_->GetCoulombchargeData(), axp_->GetCoulombdischargeData(), axp_->GetCoulombData(), axp_->GetBatChargeCurrent(),
-  axp_->GetBatCurrent());
-*/
 }
 
 void Axp192Component::loop() {
