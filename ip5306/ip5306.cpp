@@ -25,7 +25,7 @@ void IP5306::setup() {
   }
 }
 
-void IP5306::loop() {
+void IP5306::update() {
   uint8_t data[2];
   if (this->battery_level_ != nullptr) {
     if (this->read_register(IP5306_REG_LEVEL, data, 1) != i2c::ERROR_OK) {
