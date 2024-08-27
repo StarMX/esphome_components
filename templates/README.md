@@ -1,6 +1,6 @@
 Example:
 ```yaml
-template:
+templates:
   on_data_received:
     - logger.log:
         level: ERROR

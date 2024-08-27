@@ -18,7 +18,7 @@ void TemplatesComponent::update() {
 }
 
 void TemplatesComponent::loop() {
-    this->data_received_callback_.call(message_);
+    // this->data_received_callback_.call(message_);
 }
 
 void TemplatesComponent::send(const std::string &message) {

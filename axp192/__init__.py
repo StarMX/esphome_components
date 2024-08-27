@@ -158,8 +158,8 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_LDO2_VOLTAGE, default=3): cv.All(cv.voltage, cv.float_range(1.8, 3.3)),
     cv.Optional(CONF_LDO3_VOLTAGE, default=3.3): cv.All(cv.voltage, cv.float_range(1.8, 3.3)),
     cv.Optional(CONF_DCDC1_VOLTAGE, default=3.3): cv.All(cv.voltage, cv.float_range(0.7, 3.5)),
-    cv.Optional(CONF_DCDC3_VOLTAGE, default=2.5): cv.All(cv.voltage, cv.float_range(0.7, 3.5)),
-    cv.Optional(CONF_LDOIO0_VOLTAGE, default=2.8): cv.All(cv.voltage, cv.float_range(1.8, 3.3)),
+    cv.Optional(CONF_DCDC3_VOLTAGE, default=3.3): cv.All(cv.voltage, cv.float_range(0.7, 3.5)),
+    cv.Optional(CONF_LDOIO0_VOLTAGE, default=3.3): cv.All(cv.voltage, cv.float_range(1.8, 3.3)),
 }).extend(i2c.i2c_device_schema(0x77)).extend(cv.polling_component_schema('60s'))
 
 
