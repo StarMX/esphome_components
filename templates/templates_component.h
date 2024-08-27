@@ -3,9 +3,9 @@
 #include "esphome/core/component.h"
 
 namespace esphome {
-namespace template {
+namespace templates {
 
-class TemplateComponent : public PollingComponent{
+class TemplatesComponent : public PollingComponent{
   public:
     void setup() override;
     void dump_config() override;
@@ -25,17 +25,17 @@ class TemplateComponent : public PollingComponent{
     CallbackManager<void(std::string)> data_received_callback_;
 };
 
-class TemplateDataReceivedMessageTrigger : public Trigger<std::string> {
+class TemplatesDataReceivedMessageTrigger : public Trigger<std::string> {
  public:
-  explicit TemplateDataReceivedMessageTrigger(TemplateComponent *parent) {
+  explicit TemplatesDataReceivedMessageTrigger(TemplatesComponent *parent) {
     parent->add_on_data_received_callback([this](const std::string &message) { this->trigger(message); });
   }
 };
 
 
-template<typename... Ts> class TemplateSendAction : public Action<Ts...> {
+template<typename... Ts> class TemplatesSendAction : public Action<Ts...> {
  public:
-  TemplateSendAction(TemplateComponent *parent) : parent_(parent) {}
+  TemplatesSendAction(TemplatesComponent *parent) : parent_(parent) {}
   TEMPLATABLE_VALUE(std::string, message)
 
   void play(Ts... x) {
@@ -44,7 +44,7 @@ template<typename... Ts> class TemplateSendAction : public Action<Ts...> {
   }
 
  protected:
-  TemplateComponent *parent_;
+  TemplatesComponent *parent_;
 };
 
 
