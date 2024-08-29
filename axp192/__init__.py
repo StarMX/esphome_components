@@ -142,26 +142,25 @@ CONFIG_SCHEMA = cv.Schema({
         entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
     ),
     cv.Optional(CONF_VOFF_VOLTAGE, default='3000mV'): cv.enum(VOFFVOLTAGE),
-    cv.Optional(CONF_CHARGE_CURRENT, default='100mA'): cv.enum(CHARGECURRENT),
+    cv.Optional(CONF_CHARGE_CURRENT, default='550mA'): cv.enum(CHARGECURRENT),
     cv.Optional(CONF_CHARGE_VOLTAGE, default='4200mV'): cv.enum(CHARGEVOLTAGE),
     cv.Optional(CONF_VBUS_HOLD_VOLTAGE_LIMIT, default='4400mV'): cv.enum(VBUS_HOLD_VOLTAGE_LIMIT),
     cv.Optional(CONF_VBUS_HOLD_VOLTAGE_LIMITED, default='YES'): cv.enum(VBUS_HOLD_VOLTAGE_LIMITED),
     cv.Optional(CONF_VBUS_HOLD_CURRENT_LIMIT, default='500mA'): cv.enum(VBUS_HOLD_CURRENT_LIMIT),
     cv.Optional(CONF_VBUS_HOLD_CURRENT_LIMITED, default='YES'): cv.enum(VBUS_HOLD_CURRENT_LIMITED),
-    cv.Optional(CONF_VBUS_IPSOUT, default='NO'): cv.enum(VBUS_IPSOUT),
+    cv.Optional(CONF_VBUS_IPSOUT, default='YES'): cv.enum(VBUS_IPSOUT),
     cv.Optional(CONF_LDOIO0_MODE, default='FLOATING'): cv.enum(LDOIO0_MODE),
     cv.Optional(CONF_DISABLE_LDO2, default=False): cv.boolean,
     cv.Optional(CONF_DISABLE_LDO3, default=False): cv.boolean,
     cv.Optional(CONF_DISABLE_RTC, default=False): cv.boolean,
     cv.Optional(CONF_DISABLE_DCDC1, default=False): cv.boolean,
     cv.Optional(CONF_DISABLE_DCDC3, default=False): cv.boolean,
-    cv.Optional(CONF_LDO2_VOLTAGE, default=3): cv.All(cv.voltage, cv.float_range(1.8, 3.3)),
+    cv.Optional(CONF_LDO2_VOLTAGE, default=3.3): cv.All(cv.voltage, cv.float_range(1.8, 3.3)),
     cv.Optional(CONF_LDO3_VOLTAGE, default=3.3): cv.All(cv.voltage, cv.float_range(1.8, 3.3)),
     cv.Optional(CONF_DCDC1_VOLTAGE, default=3.3): cv.All(cv.voltage, cv.float_range(0.7, 3.5)),
-    cv.Optional(CONF_DCDC3_VOLTAGE, default=3): cv.All(cv.voltage, cv.float_range(0.7, 3)),
-    cv.Optional(CONF_LDOIO0_VOLTAGE, default=3.3): cv.All(cv.voltage, cv.float_range(1.8, 3.3)),
+    cv.Optional(CONF_DCDC3_VOLTAGE, default=3): cv.All(cv.voltage, cv.float_range(0.7, 3.5)),
+    cv.Optional(CONF_LDOIO0_VOLTAGE, default=2.8): cv.All(cv.voltage, cv.float_range(1.8, 3.3)),
 }).extend(i2c.i2c_device_schema(0x34)).extend(cv.polling_component_schema('60s'))
-
 
 async def to_code(config):
     cg.add_global(axp192_ns.using)
