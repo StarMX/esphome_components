@@ -61,8 +61,6 @@ void Axp192Component::dump_config() {
   ESP_LOGCONFIG(this->get_component_source(), "AXP192:");
   LOG_I2C_DEVICE(this);
   LOG_UPDATE_INTERVAL(this);
-  if (this->is_failed())
-    ESP_LOGE(TAG, "Communication with AXP192 failed!");
   ESP_LOGCONFIG(this->get_component_source(), "Registers:");
   for (auto reg : this->registers_) {
     ESP_LOGCONFIG(this->get_component_source(), "  %s %s", detail::to_hex(reg.first).c_str(),
@@ -211,6 +209,42 @@ void Axp192Component::update() {
     }
   }
 #endif
+
+  /*
+  if (this->batterylevel_sensor_ != nullptr) {
+    // To be fixed
+    // This is not giving the right value - mostly there to have some sample sensor...
+    float vbat = axp_->GetBatVoltage();
+    float batterylevel = 100.0 * ((vbat - 3.0) / (4.1 - 3.0));
+    ESP_LOGD(this->get_component_source(), "Got Battery Level=%f (%f)", batterylevel, vbat);
+    if (batterylevel > 100.) {
+      batterylevel = 100;
+    }
+    this->batterylevel_sensor_->publish_state(batterylevel);
+  }
+
+  auto input_status = axp_->GetInputPowerStatus();
+  auto power_status = axp_->GetBatteryChargingStatus();
+  bool ac_in = input_status & 0b10000000;
+  bool vbus_in = input_status & 0b00100000;
+  bool bat_charge = input_status & 0b00000100;
+  bool axp_overtemp = power_status & 0b10000000;
+  bool charge_req = power_status & 0b01000000;
+  bool bat_active = power_status & 0b00001000;
+
+  // iterate sensors_ publish value
+  if (sensors_.contains("battery_current")) {
+    sensors_.at("battery_current")->
+  }
+  ESP_LOGD(
+      this->get_component_source(),
+      "input: %x, power: %x, ac_in: %d, vbus_in: %d, bat_charge: %d, axp_overtemp: %d, charge_req: %d, bat_active: %d",
+      input_status, power_status, ac_in, vbus_in, bat_charge, axp_overtemp, charge_req, bat_active);
+
+  ESP_LOGD(this->get_component_source(), "Col in: %u Col out: %u Charge: %fmAh cin: %f batc: %f",
+  axp_->GetCoulombchargeData(), axp_->GetCoulombdischargeData(), axp_->GetCoulombData(), axp_->GetBatChargeCurrent(),
+  axp_->GetBatCurrent());
+*/
 }
 
 void Axp192Component::loop() {
@@ -220,7 +254,9 @@ void Axp192Component::loop() {
 #endif
 }
 
-void Axp192Component::power_off() {}
+void Axp192Component::power_off() {
+  this->update_register(RegisterLocations::POWEROFF_BATTERY_CHLED_CONTROL, 0b00000111, 0b01111111);
+}
 
 void Axp192Component::prepare_sleep() {}
 
@@ -269,30 +305,32 @@ void Axp192Component::set_disable_rtc(bool disable_rtc) {
   this->update_register(RegisterLocations::BATTERY_BACKUP_CONTROL, disable_rtc ? 0x0 : 0b10000000, 0b11000111);
 }
 
-void Axp192Component::set_disable_ldo2(bool disable_ldo2) { // (1 << 2) , 255 & ~(1 << 2)
+void Axp192Component::set_disable_ldo2(bool disable_ldo2) { // (1 << 2) , ~(1 << 2) | 1
   this->update_register(RegisterLocations::DCDC13_LDO23_CONTROL, disable_ldo2 ? 0x0 : 0b00000100, 0b11111011);
 }
 
-void Axp192Component::set_disable_ldo3(bool disable_ldo3) { // (1 << 3) , 255 & ~(1 << 3)
+void Axp192Component::set_disable_ldo3(bool disable_ldo3) { // (1 << 3) , ~(1 << 3) | 1
   this->update_register(RegisterLocations::DCDC13_LDO23_CONTROL, disable_ldo3 ? 0x0 : 0b00001000, 0b11110111);
 }
 
-void Axp192Component::set_disable_dcdc1(bool disable_dcdc1) { // (1 << 1), 255 & ~(1 << 1)
-  this->update_register(RegisterLocations::DCDC13_LDO23_CONTROL, disable_dcdc1 ? 0x0 : 0b00000010, 0b11111101);
+void Axp192Component::set_disable_dcdc1(bool disable_dcdc1) { // (1 << 0) , ~(1 << 0) |1
+  this->update_register(RegisterLocations::DCDC13_LDO23_CONTROL, disable_dcdc1 ? 0x0 : 0b00000001, 0b11111110);
+
 }
 
-void Axp192Component::set_disable_dcdc3(bool disable_dcdc3) { // (1 << 0) , 255 & ~(1 << 0)
-  this->update_register(RegisterLocations::DCDC13_LDO23_CONTROL, disable_dcdc3 ? 0x0 : 0b00000001, 0b11111110);
+void Axp192Component::set_disable_dcdc3(bool disable_dcdc3) { //  (1 << 1) ,~(1 << 1)  | 1
+  this->update_register(RegisterLocations::DCDC13_LDO23_CONTROL, disable_dcdc3 ? 0x0 : 0b00000010, 0b11111101);
+
 }
 
 void Axp192Component::set_dcdc1_voltage(uint32_t dcdc1_voltage) {
   this->update_register(RegisterLocations::DCDC1_VOLTAGE,
-                        detail::constrained_remap<uint32_t, 700, 3500, 0x0, 0x7F>(dcdc1_voltage), 0b10000000);
+                        detail::constrained_remap<uint32_t, 700, 3500, 0x0, 0x70>(dcdc1_voltage), 0b10000000);
 }
 
 void Axp192Component::set_dcdc3_voltage(uint32_t dcdc3_voltage) {
   this->update_register(RegisterLocations::DCDC3_VOLTAGE,
-                        detail::constrained_remap<uint32_t, 700, 3500, 0x0, 0x7F>(dcdc3_voltage), 0b10000000);
+                        detail::constrained_remap<uint32_t, 700, 3500, 0x0, 0x70>(dcdc3_voltage), 0b10000000);
 }
 
 void Axp192Component::set_ldo2_voltage(uint32_t ldo2_voltage) {
@@ -302,7 +340,7 @@ void Axp192Component::set_ldo2_voltage(uint32_t ldo2_voltage) {
 
 void Axp192Component::set_ldo3_voltage(uint32_t ldo3_voltage) {
   this->update_register(RegisterLocations::LDO23_VOLTAGE,
-                        detail::constrained_remap<uint32_t, 1800, 3300, 0x0, 0x0F>(ldo3_voltage), 0b11110000);
+                        (detail::constrained_remap<int, 1800, 3300, 0x0, 0x0F>(ldo3_voltage) << 4), 0b11110000);
 }
 
 void Axp192Component::set_ldoio0_voltage(uint32_t ldoio0_voltage) {
@@ -467,11 +505,11 @@ bool Axp192Component::get_ldo3_enabled() {
 }
 
 bool Axp192Component::get_dcdc1_enabled() {
-  return (this->registers_.at(RegisterLocations::DCDC13_LDO23_CONTROL) & 0b00000001) != 0;
+      return (this->registers_.at(RegisterLocations::DCDC13_LDO23_CONTROL) & 0b00000001) != 0;
 }
 
 bool Axp192Component::get_dcdc3_enabled() {
-  return (this->registers_.at(RegisterLocations::DCDC13_LDO23_CONTROL) & 0b00000010) != 0;
+    return (this->registers_.at(RegisterLocations::DCDC13_LDO23_CONTROL) & 0b00000010) != 0;
 }
 
 bool Axp192Component::get_ldoio0_enabled() {
@@ -667,7 +705,7 @@ void Axp192Component::register_monitor(MonitorType type, Axp192BinarySensor *mon
 #endif
 }
 
-float Axp192Component::get_setup_priority() const { return setup_priority::HARDWARE; };
+float Axp192Component::get_setup_priority() const { return setup_priority::BUS; };
 
 }  // namespace axp192
 }  // namespace esphome
