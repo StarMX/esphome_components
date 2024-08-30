@@ -341,12 +341,11 @@ void Axp192Component::set_dcdc3_voltage(uint32_t dcdc3_voltage) {
 
 void Axp192Component::set_ldo2_voltage(uint32_t ldo2_voltage) {
   this->update_register(RegisterLocations::LDO23_VOLTAGE,
-                        (detail::constrained_remap<int, 1800, 3300, 0x0, 0x0F>(ldo2_voltage) << 4), 0b00001111);
+                        (detail::constrained_remap<int, 1800, 3300, 0x0, 0x0F>(ldo2_voltage)<<4), 0b00001111);
 }
-
 void Axp192Component::set_ldo3_voltage(uint32_t ldo3_voltage) {
   this->update_register(RegisterLocations::LDO23_VOLTAGE,
-                        (detail::constrained_remap<int, 1800, 3300, 0x0, 0x0F>(ldo3_voltage) << 4), 0b11110000);
+                        detail::constrained_remap<int, 1800, 3300, 0x0, 0x0F>(ldo3_voltage), 0b11110000);
 }
 
 void Axp192Component::set_ldoio0_voltage(uint32_t ldoio0_voltage) {
