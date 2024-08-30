@@ -255,7 +255,13 @@ void Axp192Component::loop() {
 }
 
 void Axp192Component::power_off() {
-  this->update_register(RegisterLocations::POWEROFF_BATTERY_CHLED_CONTROL, 0b00000111, 0b01111111);
+    if (!this->load_register(RegisterLocations::POWEROFF_BATTERY_CHLED_CONTROL))
+      ESP_LOGW(this->get_component_source(), "Failed to load POWEROFF_BATTERY_CHLED_CONTROL");
+    if (!this->update_register(RegisterLocations::POWEROFF_BATTERY_CHLED_CONTROL, 0b10000000, 0b01111111))
+      ESP_LOGW(this->get_component_source(), "Failed to POWEROFF_BATTERY_CHLED_CONTROL");
+    if (!this->save_register(RegisterLocations::POWEROFF_BATTERY_CHLED_CONTROL)){
+      ESP_LOGW(this->get_component_source(), "Failed to save POWEROFF_BATTERY_CHLED_CONTROL");
+    }  
 }
 
 void Axp192Component::prepare_sleep() {}
@@ -450,9 +456,11 @@ bool Axp192Component::save_register(RegisterLocations reg) {
   auto mask = this->register_masks_.find(reg);
   if (mask != this->register_masks_.end()) {
     base = this->read_byte(detail::to_int(reg)).value_or(0x00) & mask->second;
+    base |= location->second;
+  }else{
+    base = location->second;
   }
 
-  base |= location->second;
   if (this->write_byte(detail::to_int(reg), base)) {
     ESP_LOGVV(this->get_component_source(), "Wrote %s to 0x%02X", detail::format_bits(base).c_str(),
               detail::to_int(reg));
