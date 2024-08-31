@@ -451,15 +451,15 @@ bool Axp192Component::save_register(RegisterLocations reg) {
     return false;
   }
 
-  auto base = 0xFF;
-  auto mask = this->register_masks_.find(reg);
-  if (mask != this->register_masks_.end()) {
-    base = this->read_byte(detail::to_int(reg)).value_or(0x00) & mask->second;
-    base |= location->second;
-  }else{
-    base = location->second;
-  }
-
+  // auto base = 0xFF;
+  // auto mask = this->register_masks_.find(reg);
+  // if (mask != this->register_masks_.end()) {
+  //   base = this->read_byte(detail::to_int(reg)).value_or(0x00) & mask->second;
+  //   base |= location->second;
+  // }else{
+  //   base = location->second;
+  // }
+  auto base = location->second;
   if (this->write_byte(detail::to_int(reg), base)) {
     ESP_LOGVV(this->get_component_source(), "Wrote %s to 0x%02X", detail::format_bits(base).c_str(),
               detail::to_int(reg));

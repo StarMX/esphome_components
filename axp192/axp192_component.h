@@ -397,24 +397,24 @@ class Axp192Component : public i2c::I2CDevice, public PollingComponent {
       {RegisterLocations::GPIO_LDO_VOLTAGE, 0xA0},                 // 9.11.39 (LDio0) voltage
   };
 
-  std::unordered_map<RegisterLocations, uint8_t> register_masks_{
-      {RegisterLocations::DCDC13_LDO23_CONTROL, 0b11110000},
-      {RegisterLocations::EXTEN_DCDC2_CONTROL, 0b11111010},
-      {RegisterLocations::DCDC2_VOLTAGE, 0b11000000},
-      {RegisterLocations::DCDC1_VOLTAGE, 0b10000000},
-      {RegisterLocations::DCDC3_VOLTAGE, 0b10000000},
-      {RegisterLocations::VOFF_VOLTAGE, 0b11111000},
-      {RegisterLocations::POWEROFF_BATTERY_CHLED_CONTROL, 0b00000100},
-      {RegisterLocations::BATTERY_BACKUP_CONTROL, 0b00011100},
-      {RegisterLocations::IRQ_ENABLE_REGISTER1, 0b00000001},
-      {RegisterLocations::IRQ_ENABLE_REGISTER3, 0b00000100},
-      {RegisterLocations::IRQ_ENABLE_REGISTER4, 0b00000010},
-      {RegisterLocations::ADC_ENABLE_REGISTER2, 0b01111000},
-      {RegisterLocations::ADC_SAMPLE_FREQUENCY_TS_CONTROL, 0b00001000},
-      {RegisterLocations::GPIO_30_INPUT_RANGE, 0b11110000},
-      {RegisterLocations::GPIO_CONTROL, 0b11110000},
-      {RegisterLocations::GPIO_LDO_VOLTAGE, 0b00001111},
-  };
+  // std::unordered_map<RegisterLocations, uint8_t> register_masks_{
+  //     {RegisterLocations::DCDC13_LDO23_CONTROL, 0b11110000},
+  //     {RegisterLocations::EXTEN_DCDC2_CONTROL, 0b11111010},
+  //     {RegisterLocations::DCDC2_VOLTAGE, 0b11000000},
+  //     {RegisterLocations::DCDC1_VOLTAGE, 0b10000000},
+  //     {RegisterLocations::DCDC3_VOLTAGE, 0b10000000},
+  //     {RegisterLocations::VOFF_VOLTAGE, 0b11111000},
+  //     {RegisterLocations::POWEROFF_BATTERY_CHLED_CONTROL, 0b00000100},
+  //     {RegisterLocations::BATTERY_BACKUP_CONTROL, 0b00011100},
+  //     {RegisterLocations::IRQ_ENABLE_REGISTER1, 0b00000001},
+  //     {RegisterLocations::IRQ_ENABLE_REGISTER3, 0b00000100},
+  //     {RegisterLocations::IRQ_ENABLE_REGISTER4, 0b00000010},
+  //     {RegisterLocations::ADC_ENABLE_REGISTER2, 0b01111000},
+  //     {RegisterLocations::ADC_SAMPLE_FREQUENCY_TS_CONTROL, 0b00001000},
+  //     {RegisterLocations::GPIO_30_INPUT_RANGE, 0b11110000},
+  //     {RegisterLocations::GPIO_CONTROL, 0b11110000},
+  //     {RegisterLocations::GPIO_LDO_VOLTAGE, 0b00001111},
+  // };
 
  private:
   void publish_helper_(SensorType type, float state);

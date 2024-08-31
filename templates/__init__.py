@@ -42,15 +42,20 @@ async def to_code(config):
         )
 
 
-TEMPLATES_SEND_SCHEMA = cv.Schema(
-    {
-        cv.GenerateID(): cv.use_id(TemplatesComponent),
-        cv.Required(CONF_MESSAGE): cv.templatable(cv.string),
-    }
-)
+# TEMPLATES_SEND_SCHEMA = cv.Schema(
+#     {
+#         cv.GenerateID(): cv.use_id(TemplatesComponent),
+#         cv.Required(CONF_MESSAGE): cv.templatable(cv.string),
+#     }
+# )
 
 @automation.register_action(
-    "templates.send", TemplatesSendAction, TEMPLATES_SEND_SCHEMA
+    "templates.send", TemplatesSendAction, cv.Schema(
+        {
+            cv.GenerateID(): cv.use_id(TemplatesComponent),
+            cv.Required(CONF_MESSAGE): cv.templatable(cv.string),
+        }
+    )
 )
 
 async def templates_send_to_code(config, action_id, template_arg, args):
