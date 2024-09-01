@@ -118,7 +118,7 @@ void SX127x::setup() {
   ESP_LOGCONFIG(TAG, "Setting up SX127x Done");
 }
 
-void SX127x::update() { ESP_LOGD(TAG, "Lora RSSI %d => %d", this->rssi(), this->available()); }
+void SX127x::update() { ESP_LOGD(TAG, "Lora RSSI %d", this->rssi()); }
 
 void SX127x::loop() {
   this->receive();
@@ -258,13 +258,16 @@ void SX127x::write_register_(uint8_t reg, uint8_t value) {
 }
 
 void SX127x::dump_config() {
-  //   uint32_t rx_bw_mant = 16 + (this->rx_bandwidth_ >> 3) * 4;
-  //   uint32_t rx_bw_exp = this->rx_bandwidth_ & 0x7;
-  //   float rx_bw = (float)32000000 / (rx_bw_mant * (1 << (rx_bw_exp + 2)));
   ESP_LOGCONFIG(TAG, "SX127x:");
   LOG_PIN("  CS Pin: ", this->cs_);
   LOG_PIN("  RST Pin: ", this->rst_pin_);
-  ESP_LOGCONFIG(TAG, "  Frequency: %f MHz", (float) this->frequency_ / 1000000);
+  LOG_PIN("  DIO0 Pin: ", this->dio0_pin_);
+  ESP_LOGCONFIG(TAG, "  frequency: %.2f MHz", (float) this->frequency_ / 1000000);
+  ESP_LOGCONFIG(TAG, "  bandwidth: %d", this->bandwidth_);
+  ESP_LOGCONFIG(TAG, "  tx power: %d", this->tx_power_);
+  ESP_LOGCONFIG(TAG, "  preamble length: %d", this->preamble_length_);
+  ESP_LOGCONFIG(TAG, "  spreading factor: %d", this->spreading_factor_);
+  ESP_LOGCONFIG(TAG, "  coding rate: %d", this->coding_rate_);
   if (this->is_failed()) {
     ESP_LOGE(TAG, "Configuring SX127x failed");
   }
