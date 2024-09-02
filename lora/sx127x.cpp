@@ -113,9 +113,9 @@ void SX127x::setup() {
   // enable Crc
   this->write_register_(REG_MODEM_CONFIG_2, this->read_register_(REG_MODEM_CONFIG_2) | 0x04);
 
-  // enable Invert IQ
-  this->write_register_(REG_INVERTIQ, 0x66);
-  this->write_register_(REG_INVERTIQ2, 0x19);
+  // // enable Invert IQ
+  // this->write_register_(REG_INVERTIQ, 0x66);
+  // this->write_register_(REG_INVERTIQ2, 0x19);
 
   // put in standby mode
   this->idle();
@@ -124,29 +124,29 @@ void SX127x::setup() {
 
 void SX127x::update() {
   ESP_LOGD(TAG, "Lora RSSI %d", this->rssi());
-  std::string message = "Hello, World!";
+  // // disable Invert IQ
+  // this->write_register_(REG_INVERTIQ, 0x27);
+  // this->write_register_(REG_INVERTIQ2, 0x1d);
 
-  // disable Invert IQ
-  this->write_register_(REG_INVERTIQ, 0x27);
-  this->write_register_(REG_INVERTIQ2, 0x1d);
-
-  this->sendPacket((uint8_t *) message.data(), message.size());
+  // std::string message = "Hello, World!";
+  // this->sendPacket((uint8_t *) message.data(), message.size());
 }
 
 void SX127x::loop() {
   this->receive();
   if (this->received()) {
-    uint8_t len = this->available();
-    uint8_t *data = new uint8_t[len];
-    if (receivePacket(data, len)) {
-      ESP_LOGD(TAG, "Lora message %s", data);
+    uint8_t length = this->available();
+    uint8_t *data = (uint8_t *) malloc(length * sizeof(uint8_t));
+    if (receivePacket(data, length)) {
+      this->data_received_callback_.call(reinterpret_cast<const char *>(data), length);
+      ESP_LOGV(TAG, "Lora message %s => lenght %d", data, length);
     }
-    delete[] data;
-    ESP_LOGD(TAG, "Lora message lenght %d", len);
+    free(data);
   }
 }
 
 void SX127x::sendPacket(uint8_t *buf, uint8_t size) {
+  // this->write_register_(REG_DIO_MAPPING_1, 0x40);
   /*
    * Transfer data to radio.
    */
@@ -154,44 +154,33 @@ void SX127x::sendPacket(uint8_t *buf, uint8_t size) {
   this->write_register_(REG_FIFO_ADDR_PTR, 0);
   this->write_register_(REG_FIFO, buf, size);
   this->write_register_(REG_PAYLOAD_LENGTH, size);
-
   /*
    * Start transmission and wait for conclusion.
    */
   this->write_register_(REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_TX);
-  int loop = 0;
-  while (1) {
-    int irq = this->read_register_(REG_IRQ_FLAGS);
-    ESP_LOGD(TAG, "lora_read_reg=0x%x", irq);
-    if ((irq & IRQ_TX_DONE_MASK) == IRQ_TX_DONE_MASK)
+  uint8_t loop = 0;
+  do {
+    if ((this->read_register_(REG_IRQ_FLAGS) & IRQ_TX_DONE_MASK) == IRQ_TX_DONE_MASK) {
+      ESP_LOGD(TAG, "Send Packet Done");
       break;
+    }
     loop++;
-    if (loop == 10)
-      break;
     vTaskDelay(2);
-  }
-  if (loop == 10) {
+  } while (loop <= 10);
+  if (loop == 10)
     ESP_LOGE(TAG, "lora_send_packet Fail");
-  }
-  this->write_register_(REG_IRQ_FLAGS, IRQ_TX_DONE_MASK);
 }
 
 bool SX127x::receivePacket(uint8_t *buf, uint8_t size) {
   uint8_t irq = this->read_register_(REG_IRQ_FLAGS);
-  // clear IRQ's ?????
-  this->write_register_(REG_IRQ_FLAGS, irq);
-  // this->write_register_(REG_IRQ_FLAGS, IRQ_RX_DONE_MASK);
+  // clear IRQ's
+  this->write_register_(REG_IRQ_FLAGS, IRQ_RX_DONE_MASK);
   if ((irq & IRQ_RX_DONE_MASK) == 0)
     return false;
   if (irq & IRQ_PAYLOAD_CRC_ERROR_MASK)
     return false;
-  //  /*
-  //   * Find packet size.
-  //   */
-  //  if (__implicit) len = lora_read_reg(REG_PAYLOAD_LENGTH);
-  //  else len = lora_read_reg(REG_RX_NB_BYTES);
-
   this->idle();
+  this->write_register_(REG_FIFO_ADDR_PTR, this->read_register_(REG_FIFO_RX_CURRENT_ADDR));
   this->read_register_(REG_FIFO, buf, size);
   return true;
 }
@@ -295,7 +284,7 @@ void SX127x::dump_config() {
   LOG_PIN("  CS Pin: ", this->cs_);
   LOG_PIN("  RST Pin: ", this->rst_pin_);
   LOG_PIN("  DIO0 Pin: ", this->dio0_pin_);
-  ESP_LOGCONFIG(TAG, "  frequency: %f MHz", (double)this->frequency_ / 1000000);
+  ESP_LOGCONFIG(TAG, "  frequency: %f MHz", (double) this->frequency_ / 1000000);
   ESP_LOGCONFIG(TAG, "  bandwidth: %d", this->bandwidth_);
   ESP_LOGCONFIG(TAG, "  tx power: %d", this->tx_power_);
   ESP_LOGCONFIG(TAG, "  preamble length: %d", this->preamble_length_);

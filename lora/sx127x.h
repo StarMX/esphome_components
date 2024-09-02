@@ -28,6 +28,9 @@ class SX127x : public PollingComponent,
   int8_t available();
   bool receivePacket(uint8_t *buf, uint8_t size);
   void sendPacket(uint8_t *buf, uint8_t size);
+  void add_on_data_received_callback(std::function<void(const char *, uint8_t)> callback) {
+    this->data_received_callback_.add(std::move(callback));
+  }
 
  private:
   bool received();
@@ -54,6 +57,15 @@ class SX127x : public PollingComponent,
   uint32_t preamble_length_;
   uint8_t spreading_factor_;
   uint8_t coding_rate_;
+  CallbackManager<void(const char *, uint8_t)> data_received_callback_;
+};
+
+class LoraDataReceivedMessageTrigger : public Trigger<const char *, uint8_t> {
+ public:
+  explicit LoraDataReceivedMessageTrigger(SX127x *parent) {
+    parent->add_on_data_received_callback(
+        [this](const char *data, uint8_t length) { this->trigger(data, length); });
+  }
 };
 
 }  // namespace lora

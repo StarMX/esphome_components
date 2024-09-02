@@ -1,9 +1,8 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome import pins
+from esphome import pins,automation
 from esphome.components import spi
-from esphome.const import CONF_ID,CONF_CS_PIN,CONF_RESET_PIN 
-
+from esphome.const import CONF_ID,CONF_CS_PIN,CONF_RESET_PIN,CONF_TRIGGER_ID
 
 DEPENDENCIES = ["spi"]
 
@@ -15,8 +14,18 @@ CONF_BANDWIDTH = "bandwidth" #带宽
 CONF_SPREADING_FACTOR="spreading_factor" #扩频因子，决定了数据传输的速率和抗干扰能力
 CONF_CODING_RATE="coding_rate" #编码率
 
+CONF_ON_DATA_RECEIVED = "on_data_received"
+
+
 lora_ns = cg.esphome_ns.namespace("lora")
 Lora = lora_ns.class_("SX127x", cg.PollingComponent, spi.SPIDevice)
+
+LoraDataReceivedMessageTrigger = lora_ns.class_(
+    "LoraDataReceivedMessageTrigger",
+    automation.Trigger.template(cg.const_char_ptr,cg.uint8),
+)
+
+
 
 CONFIG_SCHEMA = (
     cv.Schema(
@@ -30,6 +39,13 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_PREAMBLE_LENGTH, default=8): cv.int_range(min=6, max=65535),
             cv.Optional(CONF_SPREADING_FACTOR, default=7): cv.int_range(min=6, max=12),
             cv.Optional(CONF_CODING_RATE, default=5): cv.int_range(min=5, max=8),
+            cv.Optional(CONF_ON_DATA_RECEIVED): automation.validate_automation(
+                {
+                    cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(
+                        LoraDataReceivedMessageTrigger
+                    ),
+                }
+            )
 
         }
     ).extend(spi.spi_device_schema(True, 8e6, 'mode0')).extend(cv.polling_component_schema('5s'))
@@ -48,4 +64,8 @@ async def to_code(config):
     cg.add(var.set_preamble_length(config[CONF_PREAMBLE_LENGTH]))
     cg.add(var.set_spreading_factor(config[CONF_SPREADING_FACTOR]))
     cg.add(var.set_coding_rate(config[CONF_CODING_RATE]))
-    
+    for conf in config.get(CONF_ON_DATA_RECEIVED, []):
+        trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
+        await automation.build_automation(
+            trigger, [(cg.const_char_ptr, "data"),(cg.uint8, "length")], conf
+        )
