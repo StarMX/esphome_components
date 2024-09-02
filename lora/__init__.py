@@ -26,8 +26,8 @@ CONFIG_SCHEMA = (
             cv.Required(CONF_DIO0_PIN): pins.internal_gpio_output_pin_schema,
             cv.Required(CONF_FREQUENCY): cv.int_range(min=410000000, max=525000000),
             cv.Optional(CONF_BANDWIDTH, default=7): cv.int_range(min=0, max=9),
-            cv.Optional(CONF_TX_POWER, default=17): cv.int_range(min=2, max=17),
-            cv.Optional(CONF_PREAMBLE_LENGTH, default=8): cv.int_range(min=0, max=65535),
+            cv.Optional(CONF_TX_POWER, default=17): cv.int_range(min=2, max=20),
+            cv.Optional(CONF_PREAMBLE_LENGTH, default=8): cv.int_range(min=6, max=65535),
             cv.Optional(CONF_SPREADING_FACTOR, default=7): cv.int_range(min=6, max=12),
             cv.Optional(CONF_CODING_RATE, default=5): cv.int_range(min=5, max=8),
 

@@ -113,6 +113,10 @@ void SX127x::setup() {
   // enable Crc
   this->write_register_(REG_MODEM_CONFIG_2, this->read_register_(REG_MODEM_CONFIG_2) | 0x04);
 
+  // enable Invert IQ
+  this->write_register_(REG_INVERTIQ, 0x66);
+  this->write_register_(REG_INVERTIQ2, 0x19);
+
   // put in standby mode
   this->idle();
   ESP_LOGCONFIG(TAG, "Setting up SX127x Done");
@@ -121,7 +125,12 @@ void SX127x::setup() {
 void SX127x::update() {
   ESP_LOGD(TAG, "Lora RSSI %d", this->rssi());
   std::string message = "Hello, World!";
-  this->sendPacket((uint8_t *)message.data(), message.size());
+
+  // disable Invert IQ
+  this->write_register_(REG_INVERTIQ, 0x27);
+  this->write_register_(REG_INVERTIQ2, 0x1d);
+
+  this->sendPacket((uint8_t *) message.data(), message.size());
 }
 
 void SX127x::loop() {
@@ -217,10 +226,13 @@ void SX127x::setPreambleLength() {
 
 void SX127x::setTxPower() {
   // RF9x module uses PA_BOOST pin
-  if (this->tx_power_ < 2)
+  if (this->tx_power_ < 2) {
     this->tx_power_ = 2;
-  else if (this->tx_power_ > 17)
-    this->tx_power_ = 17;
+    this->write_register_(REG_PA_DAC, 0x84);
+  } else if (this->tx_power_ > 17) {
+    this->tx_power_ -= 3;
+    this->write_register_(REG_PA_DAC, 0x87);
+  }
   this->write_register_(REG_PA_CONFIG, PA_BOOST | (this->tx_power_ - 2));
 }
 
@@ -283,7 +295,7 @@ void SX127x::dump_config() {
   LOG_PIN("  CS Pin: ", this->cs_);
   LOG_PIN("  RST Pin: ", this->rst_pin_);
   LOG_PIN("  DIO0 Pin: ", this->dio0_pin_);
-  ESP_LOGCONFIG(TAG, "  frequency: %.2f MHz", (float) this->frequency_ / 1000000);
+  ESP_LOGCONFIG(TAG, "  frequency: %f MHz", (double)this->frequency_ / 1000000);
   ESP_LOGCONFIG(TAG, "  bandwidth: %d", this->bandwidth_);
   ESP_LOGCONFIG(TAG, "  tx power: %d", this->tx_power_);
   ESP_LOGCONFIG(TAG, "  preamble length: %d", this->preamble_length_);

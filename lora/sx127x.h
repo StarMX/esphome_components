@@ -16,7 +16,7 @@ class SX127x : public PollingComponent,
   void dump_config() override;
   void set_reset_pin(InternalGPIOPin *rst_pin) { this->rst_pin_ = rst_pin; }
   void set_dio0_pin(InternalGPIOPin *dio0_pin) { this->dio0_pin_ = dio0_pin; }
-  void set_frequency(uint32_t frequency) { this->frequency_ = frequency; }
+  void set_frequency(long frequency) { this->frequency_ = frequency; }
   void set_bandwidth(uint8_t bandwidth) { this->bandwidth_ = bandwidth; }
   void set_tx_power(uint8_t power) { this->tx_power_ = power; }
   void set_preamble_length(uint32_t preamble_length) { this->preamble_length_ = preamble_length; }
@@ -48,7 +48,7 @@ class SX127x : public PollingComponent,
   void read_register_(uint8_t reg, uint8_t *buffer, size_t length);
   InternalGPIOPin *rst_pin_{nullptr};
   InternalGPIOPin *dio0_pin_{nullptr};
-  uint32_t frequency_;
+  long frequency_;
   uint8_t bandwidth_;
   uint8_t tx_power_;
   uint32_t preamble_length_;
