@@ -26,6 +26,8 @@ class SX127x : public PollingComponent,
   int8_t rssi();
   void receive();
   int8_t available();
+  bool receivePacket(uint8_t *buf, uint8_t size);
+  void sendPacket(uint8_t *buf, uint8_t size);
 
  private:
   bool received();

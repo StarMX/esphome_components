@@ -118,14 +118,73 @@ void SX127x::setup() {
   ESP_LOGCONFIG(TAG, "Setting up SX127x Done");
 }
 
-void SX127x::update() { ESP_LOGD(TAG, "Lora RSSI %d", this->rssi()); }
+void SX127x::update() {
+  ESP_LOGD(TAG, "Lora RSSI %d", this->rssi());
+  std::string message = "Hello, World!";
+  this->sendPacket((uint8_t *)message.data(), message.size());
+}
 
 void SX127x::loop() {
   this->receive();
   if (this->received()) {
     uint8_t len = this->available();
+    uint8_t *data = new uint8_t[len];
+    if (receivePacket(data, len)) {
+      ESP_LOGD(TAG, "Lora message %s", data);
+    }
+    delete[] data;
     ESP_LOGD(TAG, "Lora message lenght %d", len);
   }
+}
+
+void SX127x::sendPacket(uint8_t *buf, uint8_t size) {
+  /*
+   * Transfer data to radio.
+   */
+  this->idle();
+  this->write_register_(REG_FIFO_ADDR_PTR, 0);
+  this->write_register_(REG_FIFO, buf, size);
+  this->write_register_(REG_PAYLOAD_LENGTH, size);
+
+  /*
+   * Start transmission and wait for conclusion.
+   */
+  this->write_register_(REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_TX);
+  int loop = 0;
+  while (1) {
+    int irq = this->read_register_(REG_IRQ_FLAGS);
+    ESP_LOGD(TAG, "lora_read_reg=0x%x", irq);
+    if ((irq & IRQ_TX_DONE_MASK) == IRQ_TX_DONE_MASK)
+      break;
+    loop++;
+    if (loop == 10)
+      break;
+    vTaskDelay(2);
+  }
+  if (loop == 10) {
+    ESP_LOGE(TAG, "lora_send_packet Fail");
+  }
+  this->write_register_(REG_IRQ_FLAGS, IRQ_TX_DONE_MASK);
+}
+
+bool SX127x::receivePacket(uint8_t *buf, uint8_t size) {
+  uint8_t irq = this->read_register_(REG_IRQ_FLAGS);
+  // clear IRQ's ?????
+  this->write_register_(REG_IRQ_FLAGS, irq);
+  // this->write_register_(REG_IRQ_FLAGS, IRQ_RX_DONE_MASK);
+  if ((irq & IRQ_RX_DONE_MASK) == 0)
+    return false;
+  if (irq & IRQ_PAYLOAD_CRC_ERROR_MASK)
+    return false;
+  //  /*
+  //   * Find packet size.
+  //   */
+  //  if (__implicit) len = lora_read_reg(REG_PAYLOAD_LENGTH);
+  //  else len = lora_read_reg(REG_RX_NB_BYTES);
+
+  this->idle();
+  this->read_register_(REG_FIFO, buf, size);
+  return true;
 }
 
 void SX127x::sleep() { this->write_register_(REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_SLEEP); }
@@ -192,44 +251,6 @@ void SX127x::receive() {
 }
 
 bool SX127x::received(void) { return (this->read_register_(REG_IRQ_FLAGS) & IRQ_RX_DONE_MASK) ? 1 : 0; }
-
-// void SX127x::send_packet(uint8_t *buf, int size) {
-//   /*
-//    * Transfer data to radio.
-//    */
-//   this->idle();
-//   this->write_register_(REG_FIFO_ADDR_PTR, 0);
-
-// #if BUFFER_IO
-//   lora_write_reg_buffer(REG_FIFO, buf, size);
-// #else
-//   for (int i = 0; i < size; i++)
-//     this->write_register_(REG_FIFO, *buf++);
-// #endif
-
-//   this->write_register_(REG_PAYLOAD_LENGTH, size);
-
-//   /*
-//    * Start transmission and wait for conclusion.
-//    */
-//   this->write_register_(REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_TX);
-//   int loop = 0;
-//   while (1) {
-//     int irq = this->read_register_(REG_IRQ_FLAGS);
-//     ESP_LOGD(TAG, "lora_read_reg=0x%x", irq);
-//     if ((irq & IRQ_TX_DONE_MASK) == IRQ_TX_DONE_MASK)
-//       break;
-//     loop++;
-//     if (loop == 10)
-//       break;
-//     vTaskDelay(2);
-//   }
-//   if (loop == 10) {
-//     __send_packet_lost++;
-//     ESP_LOGE(TAG, "lora_send_packet Fail");
-//   }
-//   this->write_register_(REG_IRQ_FLAGS, IRQ_TX_DONE_MASK);
-// }
 
 void SX127x::read_register_(uint8_t reg, uint8_t *buffer, size_t length) {
   this->enable();
