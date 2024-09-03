@@ -5,9 +5,21 @@
 namespace esphome {
 namespace lora {
 
+#if ESPHOME_VERSION_CODE < VERSION_CODE(2023, 12, 0)
+/**
+ * Store interrupt related information.
+ */
+struct Store {
+  volatile bool have;
+  ISRInternalGPIOPin pin;
+
+  static void gpio_intr(Store *store);
+};
+#endif  // VERSION_CODE(2023, 12, 0)
+
 class SX127x : public PollingComponent,
-               public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST, spi::CLOCK_POLARITY_LOW, spi::CLOCK_PHASE_TRAILING,
-                                     spi::DATA_RATE_1MHZ> {
+               public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST, spi::CLOCK_POLARITY_LOW, spi::CLOCK_PHASE_LEADING,
+                                     spi::DATA_RATE_10MHZ> {
  public:
   float get_setup_priority() const override { return setup_priority::HARDWARE; }
   void setup() override;
@@ -27,9 +39,23 @@ class SX127x : public PollingComponent,
   void receive();
   int8_t available();
   bool receivePacket(uint8_t *buf, uint8_t size);
-  void sendPacket(uint8_t *buf, uint8_t size);
+  void sendPacket(uint8_t *buf, uint8_t size, bool async = true);
+
   void add_on_data_received_callback(std::function<void(const char *, uint8_t)> callback) {
     this->data_received_callback_.add(std::move(callback));
+  }
+  void set_send_lora_data(const std::string data) {
+#ifdef CONFIG_LORA_GATEWAY
+    this->enableInvertIQ();
+#else
+    this->disableInvertIQ();
+#endif
+    this->sendPacket((uint8_t *) data.data(), data.size());
+#ifdef CONFIG_LORA_GATEWAY
+    this->disableInvertIQ();
+#else
+    this->enableInvertIQ();
+#endif
   }
 
  private:
@@ -43,8 +69,16 @@ class SX127x : public PollingComponent,
   void setPreambleLength();
   void setSpreadingFactor();
   void setCodingRate4();
+  void enableInvertIQ();
+  void disableInvertIQ();
+  void explicitHeaderMode();
+  bool isTransmitting();
 
  protected:
+#if ESPHOME_VERSION_CODE < VERSION_CODE(2023, 12, 0)
+  Store store_;
+#endif
+
   void write_register_(uint8_t address, uint8_t value);
   void write_register_(uint8_t reg, uint8_t *value, size_t length);
   uint8_t read_register_(uint8_t address);
@@ -63,9 +97,23 @@ class SX127x : public PollingComponent,
 class LoraDataReceivedMessageTrigger : public Trigger<const char *, uint8_t> {
  public:
   explicit LoraDataReceivedMessageTrigger(SX127x *parent) {
-    parent->add_on_data_received_callback(
-        [this](const char *data, uint8_t length) { this->trigger(data, length); });
+    parent->add_on_data_received_callback([this](const char *data, uint8_t length) { this->trigger(data, length); });
   }
+};
+
+template<typename... Ts> class LoraSendAction : public Action<Ts...> {
+ public:
+  LoraSendAction(SX127x *parent) : parent_(parent) {}
+  TEMPLATABLE_VALUE(std::string, message)
+
+  void play(Ts... x) {
+    auto message = this->message_.value(x...);
+    // parent_->set_send_lora_data(message);
+    parent_->sendPacket((uint8_t *) message.data(), message.size());
+  }
+
+ protected:
+  SX127x *parent_;
 };
 
 }  // namespace lora

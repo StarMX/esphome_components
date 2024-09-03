@@ -62,6 +62,10 @@ static const char *const TAG = "sx127x";
 #define RSSI_OFFSET_HF_PORT 157
 #define RSSI_OFFSET_LF_PORT 164
 
+#if ESPHOME_VERSION_CODE < VERSION_CODE(2023, 12, 0)
+void Store::gpio_intr(Store *store) { store->have = true; }
+#endif  // VERSION_CODE(2023, 12, 0)
+
 void SX127x::setup() {
   ESP_LOGCONFIG(TAG, "Setting up SX127x Start");
 
@@ -76,6 +80,12 @@ void SX127x::setup() {
   if (this->dio0_pin_ != nullptr) {
     this->dio0_pin_->setup();
     this->dio0_pin_->pin_mode(gpio::FLAG_INPUT);
+#if ESPHOME_VERSION_CODE < VERSION_CODE(2023, 12, 0)
+    this->store_.pin = this->dio0_pin_->to_isr();
+    this->dio0_pin_->attach_interrupt(Store::gpio_intr, &this->store_, gpio::INTERRUPT_RISING_EDGE);
+#else
+    this->attach_interrupt_(this->dio0_pin_, gpio::INTERRUPT_RISING_EDGE);
+#endif
   }
 
   // start spi
@@ -108,82 +118,118 @@ void SX127x::setup() {
 
   this->setPreambleLength();
 
+  this->idle();
+
   this->setSpreadingFactor();
   this->setCodingRate4();
   // enable Crc
   this->write_register_(REG_MODEM_CONFIG_2, this->read_register_(REG_MODEM_CONFIG_2) | 0x04);
 
-  // // enable Invert IQ
-  // this->write_register_(REG_INVERTIQ, 0x66);
-  // this->write_register_(REG_INVERTIQ2, 0x19);
-
+  // #ifdef CONFIG_LORA_GATEWAY
+  //   ESP_LOGCONFIG(TAG, "LORA_GATEWAY");
+  //   this->disableInvertIQ();
+  // #else
+  //   this->enableInvertIQ();
+  // #endif
   // put in standby mode
-  this->idle();
+  this->receive();
+
   ESP_LOGCONFIG(TAG, "Setting up SX127x Done");
 }
 
-void SX127x::update() {
-  ESP_LOGD(TAG, "Lora RSSI %d", this->rssi());
-  // // disable Invert IQ
-  // this->write_register_(REG_INVERTIQ, 0x27);
-  // this->write_register_(REG_INVERTIQ2, 0x1d);
-
-  // std::string message = "Hello, World!";
-  // this->sendPacket((uint8_t *) message.data(), message.size());
-}
+void SX127x::update() { ESP_LOGVV(TAG, "Lora RSSI %d", this->rssi()); }
 
 void SX127x::loop() {
-  this->receive();
-  if (this->received()) {
-    uint8_t length = this->available();
-    uint8_t *data = (uint8_t *) malloc(length * sizeof(uint8_t));
-    if (receivePacket(data, length)) {
-      this->data_received_callback_.call(reinterpret_cast<const char *>(data), length);
-      ESP_LOGV(TAG, "Lora message %s => lenght %d", data, length);
+#if ESPHOME_VERSION_CODE < VERSION_CODE(2023, 12, 0)
+  if (this->store_.have) {
+    this->store_.have = false;
+    int irq = this->read_register_(REG_IRQ_FLAGS);
+    if ((irq & IRQ_PAYLOAD_CRC_ERROR_MASK) == 0) {
+      if ((irq & IRQ_RX_DONE_MASK) != 0) {
+        uint8_t length = this->available();
+        uint8_t *data = (uint8_t *) malloc(length * sizeof(uint8_t));
+        if (receivePacket(data, length)) {
+          this->data_received_callback_.call(reinterpret_cast<const char *>(data), length);
+          ESP_LOGVV(TAG, "Lora message %s => lenght %d", data, length);
+        } else
+          ESP_LOGE(TAG, "Lora Receive Error");
+        free(data);
+      } else if ((irq & IRQ_TX_DONE_MASK) != 0) {
+        ESP_LOGD(TAG, "Send Packet Done");
+      }
     }
-    free(data);
+    this->receive();
   }
+#endif
 }
 
-void SX127x::sendPacket(uint8_t *buf, uint8_t size) {
-  // this->write_register_(REG_DIO_MAPPING_1, 0x40);
+void SX127x::enableInvertIQ() {
+  this->write_register_(REG_INVERTIQ, 0x66);
+  this->write_register_(REG_INVERTIQ2, 0x19);
+}
+void SX127x::disableInvertIQ() {
+  this->write_register_(REG_INVERTIQ, 0x27);
+  this->write_register_(REG_INVERTIQ2, 0x1d);
+}
+
+void SX127x::sendPacket(uint8_t *buf, uint8_t size, bool async) {
+  if (this->isTransmitting()) {
+    ESP_LOGE(TAG, "Lora is Transmitting");
+    return;
+  }
+  ESP_LOGVV(TAG, "Lora sendPacket %s async", (async ? "is" : "not"));
   /*
    * Transfer data to radio.
    */
   this->idle();
+  this->explicitHeaderMode();
+
   this->write_register_(REG_FIFO_ADDR_PTR, 0);
-  this->write_register_(REG_FIFO, buf, size);
   this->write_register_(REG_PAYLOAD_LENGTH, size);
-  /*
-   * Start transmission and wait for conclusion.
-   */
+  this->write_register_(REG_FIFO, buf, size);
+
+  if (async)
+    this->write_register_(REG_DIO_MAPPING_1, 0x40);
+
   this->write_register_(REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_TX);
-  uint8_t loop = 0;
-  do {
-    if ((this->read_register_(REG_IRQ_FLAGS) & IRQ_TX_DONE_MASK) == IRQ_TX_DONE_MASK) {
-      ESP_LOGD(TAG, "Send Packet Done");
-      break;
-    }
-    loop++;
-    vTaskDelay(2);
-  } while (loop <= 10);
-  if (loop == 10)
-    ESP_LOGE(TAG, "lora_send_packet Fail");
+  if (!async) {
+    uint8_t loop = 0;
+    do {
+      if ((this->read_register_(REG_IRQ_FLAGS) & IRQ_TX_DONE_MASK)) {
+        ESP_LOGD(TAG, "Send Packet Done");
+        break;
+      }
+      loop++;
+      vTaskDelay(2);
+    } while (loop <= 10);
+    if (loop == 10)
+      ESP_LOGE(TAG, "Send Packet Fail");
+    ESP_LOGVV(TAG, "Lora Send Check Done");
+    this->receive();
+  }
 }
 
 bool SX127x::receivePacket(uint8_t *buf, uint8_t size) {
   uint8_t irq = this->read_register_(REG_IRQ_FLAGS);
   // clear IRQ's
   this->write_register_(REG_IRQ_FLAGS, IRQ_RX_DONE_MASK);
-  if ((irq & IRQ_RX_DONE_MASK) == 0)
+  if (irq & IRQ_PAYLOAD_CRC_ERROR_MASK) {
+    ESP_LOGE(TAG, "IRQ PAYLOAD CRC ERROR MASK");
     return false;
-  if (irq & IRQ_PAYLOAD_CRC_ERROR_MASK)
+  }
+  if ((irq & IRQ_RX_DONE_MASK) == 0) {
+    ESP_LOGE(TAG, "IRQ_RX_DONE_MASK");
     return false;
+  }
+
   this->idle();
+  // set FIFO address to current RX address
   this->write_register_(REG_FIFO_ADDR_PTR, this->read_register_(REG_FIFO_RX_CURRENT_ADDR));
   this->read_register_(REG_FIFO, buf, size);
   return true;
 }
+
+bool SX127x::isTransmitting() { return ((this->read_register_(REG_OP_MODE) & MODE_TX) == MODE_TX); }
 
 void SX127x::sleep() { this->write_register_(REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_SLEEP); }
 void SX127x::idle() { this->write_register_(REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_STDBY); }
@@ -247,8 +293,13 @@ int8_t SX127x::available() { return this->read_register_(REG_RX_NB_BYTES); }
 
 void SX127x::receive() {
   this->write_register_(REG_DIO_MAPPING_1, 0x00);  // DIO0 => RXDONE
-
+  this->explicitHeaderMode();
   this->write_register_(REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_RX_CONTINUOUS);
+}
+
+void SX127x::explicitHeaderMode() {
+  // explicitHeaderMode
+  this->write_register_(REG_MODEM_CONFIG_1, this->read_register_(REG_MODEM_CONFIG_1) & 0xfe);
 }
 
 bool SX127x::received(void) { return (this->read_register_(REG_IRQ_FLAGS) & IRQ_RX_DONE_MASK) ? 1 : 0; }
