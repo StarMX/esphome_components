@@ -429,5 +429,27 @@ class Axp192Component : public i2c::I2CDevice, public PollingComponent {
 
 };
 
+
+template<typename... Ts> class PowerOffAction : public Action<Ts...> {
+ public:
+  PowerOffAction(Axp192Component *parent) : parent_(parent) {}
+  void play(Ts... x) { this->parent_->power_off(); }
+
+ protected:
+  Axp192Component *parent_;
+};
+
+template<typename... Ts> class PrepareSleepAction : public Action<Ts...> {
+ public:
+  PrepareSleepAction(Axp192Component *parent) : parent_(parent) {}
+  void play(Ts... x) { this->parent_->prepare_sleep(); }
+
+ protected:
+  Axp192Component *parent_;
+};
+
+
+
+
 }  // namespace axp192
 }  // namespace esphome

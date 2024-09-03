@@ -205,18 +205,19 @@ async def to_code(config):
     PowerOffAction,
     cv.Schema({cv.GenerateID(): cv.use_id(Axp192Component)}),
 )
-async def axp192_power_off_to_code(config, action_id, args):
-    var = cg.new_Pvariable(action_id)
-    await cg.register_parented(var, config[CONF_ID])
-    return var
-
-
 @automation.register_action(
     'axp192.prepare_sleep',
     PrepareSleepAction,
     cv.Schema({cv.GenerateID(): cv.use_id(Axp192Component)}),
 )
-async def axp192_prepare_sleep_to_code(config, action_id, args):
-    var = cg.new_Pvariable(action_id)
-    await cg.register_parented(var, config[CONF_ID])
+async def power_action_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    var = cg.new_Pvariable(action_id, template_arg, paren)
     return var
+
+
+
+# async def axp192_prepare_sleep_to_code(config, action_id, args):
+#     var = cg.new_Pvariable(action_id)
+#     await cg.register_parented(var, config[CONF_AXP192_ID])
+#     return var
