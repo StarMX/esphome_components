@@ -111,15 +111,9 @@ void SX127x::setup() {
 
   //   // set output power to 17 dBm
   this->setTxPower();
-
   this->setBandwidth();
-
   this->setSyncWord(0x12);
-
   this->setPreambleLength();
-
-  this->idle();
-
   this->setSpreadingFactor();
   this->setCodingRate4();
   // enable Crc
@@ -131,9 +125,9 @@ void SX127x::setup() {
   // #else
   //   this->enableInvertIQ();
   // #endif
-  // put in standby mode
-  this->receive();
 
+  this->receive();
+  this->idle();
   ESP_LOGCONFIG(TAG, "Setting up SX127x Done");
 }
 
@@ -150,7 +144,7 @@ void SX127x::loop() {
         uint8_t *data = (uint8_t *) malloc(length * sizeof(uint8_t));
         if (receivePacket(data, length)) {
           this->data_received_callback_.call(reinterpret_cast<const char *>(data), length);
-          ESP_LOGVV(TAG, "Lora message %s => lenght %d", data, length);
+          ESP_LOGVV(TAG, "Lora Receive Message %s => lenght %d", data, length);
         } else
           ESP_LOGE(TAG, "Lora Receive Error");
         free(data);
@@ -173,8 +167,16 @@ void SX127x::disableInvertIQ() {
 }
 
 void SX127x::sendPacket(uint8_t *buf, uint8_t size, bool async) {
-  if (this->isTransmitting()) {
-    ESP_LOGE(TAG, "Lora is Transmitting");
+  uint8_t loop = 0;
+  do {
+    if (!this->isTransmitting())
+      break;
+    loop++;
+    delay(300);
+    ESP_LOGV(TAG, "Lora is Transmitting");
+  } while (loop <= 5);
+  if (loop == 5) {
+    ESP_LOGE(TAG, "Lora Send Packet Time Out");
     return;
   }
   ESP_LOGVV(TAG, "Lora sendPacket %s async", (async ? "is" : "not"));
@@ -193,14 +195,14 @@ void SX127x::sendPacket(uint8_t *buf, uint8_t size, bool async) {
 
   this->write_register_(REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_TX);
   if (!async) {
-    uint8_t loop = 0;
+    loop = 0;
     do {
       if ((this->read_register_(REG_IRQ_FLAGS) & IRQ_TX_DONE_MASK)) {
         ESP_LOGD(TAG, "Send Packet Done");
         break;
       }
       loop++;
-      vTaskDelay(2);
+      delay(2);
     } while (loop <= 10);
     if (loop == 10)
       ESP_LOGE(TAG, "Send Packet Fail");
@@ -310,7 +312,6 @@ void SX127x::read_register_(uint8_t reg, uint8_t *buffer, size_t length) {
   this->read_array(buffer, length);
   this->disable();
 }
-
 uint8_t SX127x::read_register_(uint8_t reg) {
   this->enable();
   this->transfer_byte(reg);
