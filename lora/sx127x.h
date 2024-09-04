@@ -31,7 +31,7 @@ class SX127x : public PollingComponent,
   void set_frequency(long frequency) { this->frequency_ = frequency; }
   void set_bandwidth(uint8_t bandwidth) { this->bandwidth_ = bandwidth; }
   void set_tx_power(uint8_t power) { this->tx_power_ = power; }
-  void set_preamble_length(uint32_t preamble_length) { this->preamble_length_ = preamble_length; }
+  void set_preamble_length(uint8_t preamble_length) { this->preamble_length_ = preamble_length; }
   void set_spreading_factor(uint8_t spreading_factor) { this->spreading_factor_ = spreading_factor; }
   void set_coding_rate(uint8_t coding_rate) { this->coding_rate_ = coding_rate; }
 
@@ -88,7 +88,7 @@ class SX127x : public PollingComponent,
   long frequency_;
   uint8_t bandwidth_;
   uint8_t tx_power_;
-  uint32_t preamble_length_;
+  uint8_t preamble_length_;
   uint8_t spreading_factor_;
   uint8_t coding_rate_;
   CallbackManager<void(const char *, uint8_t)> data_received_callback_;
