@@ -3,6 +3,7 @@
 #include "esphome/components/i2c/i2c.h"
 #include "esphome/core/automation.h"
 #include "esphome/core/component.h"
+#include "esphome/core/gpio.h"
 
 #include <map>
 #include <unordered_map>
@@ -88,10 +89,12 @@ enum class RegisterLocations : uint8_t {
   IRQ_ENABLE_REGISTER2 = 0x41,
   IRQ_ENABLE_REGISTER3 = 0x42,
   IRQ_ENABLE_REGISTER4 = 0x43,
+  IRQ_ENABLE_REGISTER5 = 0x4A,
   IRQ_STATUS_REGISTER1 = 0x44,
   IRQ_STATUS_REGISTER2 = 0x45,
   IRQ_STATUS_REGISTER3 = 0x46,
   IRQ_STATUS_REGISTER4 = 0x47,
+  IRQ_STATUS_REGISTER5 = 0x4D,
   ACIN_VOLTAGE_HIGH8 = 0x56,
   ACIN_VOLTAGE_LOW4 = 0x57,
   ACIN_CURRENT_HIGH8 = 0x58,
@@ -276,6 +279,13 @@ enum class LDOio0Control : uint8_t {
   FLOATING = 0b111
 };
 
+struct Axp192Store {
+  volatile bool have;
+  ISRInternalGPIOPin pin;
+
+  static void gpio_intr(Axp192Store *store);
+};
+
 // NOLINTNEXTLINE(cppcoreguidelines-virtual-class-destructor)
 class Axp192Component : public i2c::I2CDevice, public PollingComponent {
  public:
@@ -287,12 +297,13 @@ class Axp192Component : public i2c::I2CDevice, public PollingComponent {
 
   void setup() override;
   void dump_config() override;
-  float get_setup_priority() const override;
+  float get_setup_priority() const override { return setup_priority::HARDWARE; }
   void update() override;
   void loop() override;
 
-  void set_brightness(uint8_t brightness);
-  uint8_t get_brightness();
+  void set_irq_pin(InternalGPIOPin *irq_pin) { this->irq_pin_ = irq_pin; }
+  // void set_brightness(uint8_t brightness);
+  // uint8_t get_brightness();
 
   void power_off();
   void prepare_sleep();
@@ -350,7 +361,7 @@ class Axp192Component : public i2c::I2CDevice, public PollingComponent {
 #ifdef USE_BINARY_SENSOR
   void enable_irq(IrqType irq);
 #endif
-
+  void reset_irq();
   void update_powercontrol(OutputPin pin, bool value);
 
  protected:
@@ -416,6 +427,10 @@ class Axp192Component : public i2c::I2CDevice, public PollingComponent {
   //     {RegisterLocations::GPIO_LDO_VOLTAGE, 0b00001111},
   // };
 
+ protected:
+  Axp192Store store_;
+  InternalGPIOPin *irq_pin_{nullptr};
+
  private:
   void publish_helper_(SensorType type, float state);
   void debug_log_register_(RegisterLocations reg);
@@ -426,9 +441,7 @@ class Axp192Component : public i2c::I2CDevice, public PollingComponent {
   void do_irqs_();
   uint32_t last_irq_buffer_ = 0xFF;
 #endif
-
 };
-
 
 template<typename... Ts> class PowerOffAction : public Action<Ts...> {
  public:
@@ -447,9 +460,6 @@ template<typename... Ts> class PrepareSleepAction : public Action<Ts...> {
  protected:
   Axp192Component *parent_;
 };
-
-
-
 
 }  // namespace axp192
 }  // namespace esphome

@@ -189,7 +189,7 @@ async def to_code(config):
     await cg.register_parented(var, config[CONF_AXP192_ID])
     type = config[CONF_TYPE]
     if type in IRQ_TYPE:
-        print(type)
+        # print(type)
         cg.add(var.set_sensor(IRQ_TYPE[type]))
     else:
         cg.add(var.set_sensor(MONITOR_TYPE[type]))

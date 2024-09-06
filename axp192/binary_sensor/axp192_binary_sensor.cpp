@@ -27,7 +27,7 @@ void Axp192BinarySensor::set_sensor(MonitorType type) { monitor_sensor_ = type; 
 
 void Axp192BinarySensor::set_sensor(IrqType type) { irq_sensor_ = type; };
 
-float Axp192BinarySensor::get_setup_priority() const { return setup_priority::DATA; };
+float Axp192BinarySensor::get_setup_priority() const { return setup_priority::HARDWARE; };
 
 }  // namespace axp192
 }  // namespace esphome

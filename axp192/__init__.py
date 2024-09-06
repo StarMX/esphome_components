@@ -1,6 +1,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome import automation
+from esphome import pins,automation
 from esphome.components import i2c, sensor, binary_sensor
 from esphome.const import CONF_ID, CONF_BRIGHTNESS, ICON_POWER, ENTITY_CATEGORY_DIAGNOSTIC
 
@@ -8,6 +8,8 @@ MULTI_CONF = True
 
 CONF_AXP192_ID = 'axp192_id'
 DEPENDENCIES = ['i2c']
+
+CONF_IRQ_PIN = 'irq_pin'
 
 CONF_POWER_BUTTON = 'power_button_sensor'
 CONF_DISABLE_LDOIO0 = 'disable_ldoio0'
@@ -149,6 +151,7 @@ CONFIG_SCHEMA = cv.Schema({
         icon=ICON_POWER,
         entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
     ),
+    cv.Optional(CONF_IRQ_PIN): pins.internal_gpio_input_pin_schema,
     cv.Optional(CONF_VOFF_VOLTAGE, default='3000mV'): cv.enum(VOFFVOLTAGE),
     cv.Optional(CONF_CHARGE_CURRENT, default='1000mA'): cv.enum(CHARGECURRENT),
     cv.Optional(CONF_CHARGE_VOLTAGE, default='4200mV'): cv.enum(CHARGEVOLTAGE),
@@ -175,6 +178,9 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     await i2c.register_i2c_device(var, config)
+
+    if CONF_IRQ_PIN in config:
+        cg.add(var.set_irq_pin(await cg.gpio_pin_expression(config[CONF_IRQ_PIN])))
     cg.add(var.set_voff(config[CONF_VOFF_VOLTAGE]))
     cg.add(var.set_charge_voltage(config[CONF_CHARGE_VOLTAGE]))
     cg.add(var.set_charge_current(config[CONF_CHARGE_CURRENT]))

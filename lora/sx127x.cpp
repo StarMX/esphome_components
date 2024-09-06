@@ -125,9 +125,8 @@ void SX127x::setup() {
   // #else
   //   this->enableInvertIQ();
   // #endif
-
+  // this->idle();
   this->receive();
-  this->idle();
   ESP_LOGCONFIG(TAG, "Setting up SX127x Done");
 }
 

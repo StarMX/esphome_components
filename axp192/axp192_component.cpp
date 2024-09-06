@@ -51,10 +51,27 @@ constexpr uint16_t encode_13bit(uint8_t msb, uint8_t lsb) {
 
 }  // namespace detail
 
+void Axp192Store::gpio_intr(Axp192Store *store) { store->have = true; }
+
 void Axp192Component::setup() {
+  ESP_LOGCONFIG(TAG, "Setting Up AXP192 Start");
+
+  if (this->irq_pin_ != nullptr) {
+    this->irq_pin_->setup();
+    this->store_.pin = this->irq_pin_->to_isr();
+    this->irq_pin_->attach_interrupt(Axp192Store::gpio_intr, &this->store_, gpio::INTERRUPT_FALLING_EDGE);
+  }
+
   if (!this->configure_axp()) {
     this->mark_failed();
   }
+  this->reset_irq();
+
+  // this->write_byte(detail::to_int(RegisterLocations::IRQ_ENABLE_REGISTER1), 0xff);
+  // this->write_byte(detail::to_int(RegisterLocations::IRQ_ENABLE_REGISTER2), 0xff);
+  // this->write_byte(detail::to_int(RegisterLocations::IRQ_ENABLE_REGISTER3), 0xff);
+  // this->write_byte(detail::to_int(RegisterLocations::IRQ_ENABLE_REGISTER4), 0xff);
+  ESP_LOGCONFIG(TAG, "Setting Up AXP192 Done");
 }
 
 void Axp192Component::dump_config() {
@@ -69,12 +86,12 @@ void Axp192Component::dump_config() {
 }
 
 void Axp192Component::update() {
-  this->debug_log_register_(RegisterLocations::DCDC13_LDO23_CONTROL);
-  this->debug_log_register_(RegisterLocations::DCDC2_VOLTAGE);
-  this->debug_log_register_(RegisterLocations::DCDC1_VOLTAGE);
-  this->debug_log_register_(RegisterLocations::DCDC3_VOLTAGE);
-  this->debug_log_register_(RegisterLocations::LDO23_VOLTAGE);
-  this->debug_log_register_(RegisterLocations::GPIO_LDO_VOLTAGE);
+  if (this->store_.have)
+    return;
+  // this->debug_log_register_(RegisterLocations::DCDC1_VOLTAGE);
+  // this->debug_log_register_(RegisterLocations::DCDC3_VOLTAGE);
+  // this->debug_log_register_(RegisterLocations::LDO23_VOLTAGE);
+  // this->debug_log_register_(RegisterLocations::GPIO_LDO_VOLTAGE);
   this->update_powercontrol(OutputPin::OUTPUT_LDO2, this->get_ldo2_enabled());
   this->update_powercontrol(OutputPin::OUTPUT_LDO3, this->get_ldo3_enabled());
   this->update_powercontrol(OutputPin::OUTPUT_DCDC1, this->get_dcdc1_enabled());
@@ -249,19 +266,30 @@ void Axp192Component::update() {
 
 void Axp192Component::loop() {
   // IRQ triggers
-#ifdef USE_AXP92_BINARY_SENSORS
+  if (!this->store_.have)
+    return;
+#ifdef USE_AXP92_BINARY_SENSOR
   this->do_irqs_();
 #endif
+  // this->reset_irq();
+  this->store_.have = false;
 }
 
 void Axp192Component::power_off() {
-    if (!this->load_register(RegisterLocations::POWEROFF_BATTERY_CHLED_CONTROL))
-      ESP_LOGW(this->get_component_source(), "Failed to load POWEROFF_BATTERY_CHLED_CONTROL");
-    if (!this->update_register(RegisterLocations::POWEROFF_BATTERY_CHLED_CONTROL, 0b10000000, 0b01111111))
-      ESP_LOGW(this->get_component_source(), "Failed to POWEROFF_BATTERY_CHLED_CONTROL");
-    if (!this->save_register(RegisterLocations::POWEROFF_BATTERY_CHLED_CONTROL)){
-      ESP_LOGW(this->get_component_source(), "Failed to save POWEROFF_BATTERY_CHLED_CONTROL");
-    }  
+  if (!this->load_register(RegisterLocations::POWEROFF_BATTERY_CHLED_CONTROL))
+    ESP_LOGW(this->get_component_source(), "Failed to load POWEROFF_BATTERY_CHLED_CONTROL");
+  if (!this->update_register(RegisterLocations::POWEROFF_BATTERY_CHLED_CONTROL, 0b10000000, 0b01111111))
+    ESP_LOGW(this->get_component_source(), "Failed to POWEROFF_BATTERY_CHLED_CONTROL");
+  if (!this->save_register(RegisterLocations::POWEROFF_BATTERY_CHLED_CONTROL)) {
+    ESP_LOGW(this->get_component_source(), "Failed to save POWEROFF_BATTERY_CHLED_CONTROL");
+  }
+}
+
+void Axp192Component::reset_irq() {
+  this->write_byte(detail::to_int(RegisterLocations::IRQ_STATUS_REGISTER1), 0xff);
+  this->write_byte(detail::to_int(RegisterLocations::IRQ_STATUS_REGISTER2), 0xff);
+  this->write_byte(detail::to_int(RegisterLocations::IRQ_STATUS_REGISTER3), 0xff);
+  this->write_byte(detail::to_int(RegisterLocations::IRQ_STATUS_REGISTER4), 0xff);
 }
 
 void Axp192Component::prepare_sleep() {}
@@ -311,22 +339,20 @@ void Axp192Component::set_disable_rtc(bool disable_rtc) {
   this->update_register(RegisterLocations::BATTERY_BACKUP_CONTROL, disable_rtc ? 0x0 : 0b10000000, 0b11000111);
 }
 
-void Axp192Component::set_disable_ldo2(bool disable_ldo2) { // (1 << 2) , ~(1 << 2) | 1
+void Axp192Component::set_disable_ldo2(bool disable_ldo2) {  // (1 << 2) , ~(1 << 2) | 1
   this->update_register(RegisterLocations::DCDC13_LDO23_CONTROL, disable_ldo2 ? 0x0 : 0b00000100, 0b11111011);
 }
 
-void Axp192Component::set_disable_ldo3(bool disable_ldo3) { // (1 << 3) , ~(1 << 3) | 1
+void Axp192Component::set_disable_ldo3(bool disable_ldo3) {  // (1 << 3) , ~(1 << 3) | 1
   this->update_register(RegisterLocations::DCDC13_LDO23_CONTROL, disable_ldo3 ? 0x0 : 0b00001000, 0b11110111);
 }
 
-void Axp192Component::set_disable_dcdc1(bool disable_dcdc1) { // (1 << 0) , ~(1 << 0) |1
+void Axp192Component::set_disable_dcdc1(bool disable_dcdc1) {  // (1 << 0) , ~(1 << 0) |1
   this->update_register(RegisterLocations::DCDC13_LDO23_CONTROL, disable_dcdc1 ? 0x0 : 0b00000001, 0b11111110);
-
 }
 
-void Axp192Component::set_disable_dcdc3(bool disable_dcdc3) { //  (1 << 1) ,~(1 << 1)  | 1
+void Axp192Component::set_disable_dcdc3(bool disable_dcdc3) {  //  (1 << 1) ,~(1 << 1)  | 1
   this->update_register(RegisterLocations::DCDC13_LDO23_CONTROL, disable_dcdc3 ? 0x0 : 0b00000010, 0b11111101);
-
 }
 
 void Axp192Component::set_dcdc1_voltage(uint32_t dcdc1_voltage) {
@@ -341,7 +367,7 @@ void Axp192Component::set_dcdc3_voltage(uint32_t dcdc3_voltage) {
 
 void Axp192Component::set_ldo2_voltage(uint32_t ldo2_voltage) {
   this->update_register(RegisterLocations::LDO23_VOLTAGE,
-                        (detail::constrained_remap<int, 1800, 3300, 0x0, 0x0F>(ldo2_voltage)<<4), 0b00001111);
+                        (detail::constrained_remap<int, 1800, 3300, 0x0, 0x0F>(ldo2_voltage) << 4), 0b00001111);
 }
 void Axp192Component::set_ldo3_voltage(uint32_t ldo3_voltage) {
   this->update_register(RegisterLocations::LDO23_VOLTAGE,
@@ -512,11 +538,11 @@ bool Axp192Component::get_ldo3_enabled() {
 }
 
 bool Axp192Component::get_dcdc1_enabled() {
-      return (this->registers_.at(RegisterLocations::DCDC13_LDO23_CONTROL) & 0b00000001) != 0;
+  return (this->registers_.at(RegisterLocations::DCDC13_LDO23_CONTROL) & 0b00000001) != 0;
 }
 
 bool Axp192Component::get_dcdc3_enabled() {
-    return (this->registers_.at(RegisterLocations::DCDC13_LDO23_CONTROL) & 0b00000010) != 0;
+  return (this->registers_.at(RegisterLocations::DCDC13_LDO23_CONTROL) & 0b00000010) != 0;
 }
 
 bool Axp192Component::get_ldoio0_enabled() {
@@ -566,46 +592,71 @@ bool Axp192Component::configure_dcdc2(bool enable) {
 #ifdef USE_AXP92_BINARY_SENSOR
 void Axp192Component::do_irqs_() {
   // Read all IRQ registers at once
+  // auto buffer = this->read_bytes<4>(detail::to_int(RegisterLocations::IRQ_STATUS_REGISTER1));
+  // if (buffer.has_value()) {
+  //   auto bits = encode_uint32(buffer.value()[0], buffer.value()[1], buffer.value()[2], buffer.value()[3]);
+  // if (bits != this->last_irq_buffer_) {
+  //   ESP_LOGV(this->get_component_source(),
+  //            "IRQ Register Load: IRQ_STATUS_REGISTER1: 0x%08X, raw: 0x%02X, 0x%02X, 0x%02X, 0x%02X", bits,
+  //            buffer.value()[0], buffer.value()[1], buffer.value()[2], buffer.value()[3]);
+  //   this->last_irq_buffer_ = bits;
+  //   uint32_t clear_bits = 0x00;
+  //   for (auto irq : this->irqs_) {
+  //     auto val = (detail::to_int(irq.first) & bits) != 0;
+  //     this->publish_helper_(irq.first, val);
+  //     if (val) {
+  //       ESP_LOGV(this->get_component_source(), "Accept: %s: 0x%08X, clear bits: 0x%08X",
+  //                detail::to_hex(irq.first).c_str(), detail::to_int(irq.first), clear_bits);
+  //       clear_bits |= detail::to_int(irq.first);
+  //     }
+  //   }
+  //   auto output = decode_value(clear_bits);
+  //   if (output[0] > 0) {
+  //     this->write_byte(detail::to_int(RegisterLocations::IRQ_STATUS_REGISTER1), output[0]);
+  //   }
+  //   if (output[1] > 0) {
+  //     this->write_byte(detail::to_int(RegisterLocations::IRQ_STATUS_REGISTER2), output[1]);
+  //   }
+  //   if (output[2] > 0) {
+  //     this->write_byte(detail::to_int(RegisterLocations::IRQ_STATUS_REGISTER3), output[2]);
+  //   }
+  //   if (output[3] > 0) {
+  //     this->write_byte(detail::to_int(RegisterLocations::IRQ_STATUS_REGISTER4), output[3]);
+  //   }
+  //   ESP_LOGV(this->get_component_source(),
+  //            "IRQ Register Save: IRQ_STATUS_REGISTER1: 0x%08X, raw: 0x%02X, 0x%02X, 0x%02X, 0x%02X", clear_bits,
+  //            output[0], output[1], output[2], output[3]);
+  // }
+  // }
+
   auto buffer = this->read_bytes<4>(detail::to_int(RegisterLocations::IRQ_STATUS_REGISTER1));
   if (buffer.has_value()) {
     auto bits = encode_uint32(buffer.value()[0], buffer.value()[1], buffer.value()[2], buffer.value()[3]);
-    if (bits != this->last_irq_buffer_) {
-      ESP_LOGV(this->get_component_source(),
-               "IRQ Register Load: IRQ_STATUS_REGISTER1: 0x%08X, raw: 0x%02X, 0x%02X, 0x%02X, 0x%02X", bits,
-               buffer.value()[0], buffer.value()[1], buffer.value()[2], buffer.value()[3]);
-      this->last_irq_buffer_ = bits;
-      uint32_t clear_bits = 0x00;
-      for (auto irq : this->irqs_) {
-        auto val = (detail::to_int(irq.first) & bits) != 0;
+    uint32_t clear_bits = 0x00;
+    for (auto irq : this->irqs_) {
+      auto val = (detail::to_int(irq.first) & bits) != 0;
+      if (val) {
         this->publish_helper_(irq.first, val);
-        if (val) {
-          ESP_LOGV(this->get_component_source(), "Accept: %s: 0x%08X, clear bits: 0x%08X",
-                   detail::to_hex(irq.first).c_str(), detail::to_int(irq.first), clear_bits);
-          clear_bits |= detail::to_int(irq.first);
-        }
+        clear_bits |= detail::to_int(irq.first);
       }
-      auto output = decode_value(clear_bits);
-      if (output[0] > 0) {
-        this->write_byte(detail::to_int(RegisterLocations::IRQ_STATUS_REGISTER1), output[0]);
-      }
-      if (output[1] > 0) {
-        this->write_byte(detail::to_int(RegisterLocations::IRQ_STATUS_REGISTER2), output[1]);
-      }
-      if (output[2] > 0) {
-        this->write_byte(detail::to_int(RegisterLocations::IRQ_STATUS_REGISTER3), output[2]);
-      }
-      if (output[3] > 0) {
-        this->write_byte(detail::to_int(RegisterLocations::IRQ_STATUS_REGISTER4), output[3]);
-      }
-      ESP_LOGV(this->get_component_source(),
-               "IRQ Register Save: IRQ_STATUS_REGISTER1: 0x%08X, raw: 0x%02X, 0x%02X, 0x%02X, 0x%02X", clear_bits,
-               output[0], output[1], output[2], output[3]);
+    }
+    auto output = decode_value(clear_bits);
+    if (output[0] > 0) {
+      this->write_byte(detail::to_int(RegisterLocations::IRQ_STATUS_REGISTER1), output[0]);
+    }
+    if (output[1] > 0) {
+      this->write_byte(detail::to_int(RegisterLocations::IRQ_STATUS_REGISTER2), output[1]);
+    }
+    if (output[2] > 0) {
+      this->write_byte(detail::to_int(RegisterLocations::IRQ_STATUS_REGISTER3), output[2]);
+    }
+    if (output[3] > 0) {
+      this->write_byte(detail::to_int(RegisterLocations::IRQ_STATUS_REGISTER4), output[3]);
     }
   }
 }
 
 void Axp192Component::enable_irq(IrqType irq) {
-
   ESP_LOGV(this->get_component_source(), "Enable IRQ %s bits: 0x%80X", detail::to_hex(irq).c_str(),
            detail::to_int(irq));
   if (detail::to_int(irq) > 0x800000) {
@@ -640,6 +691,15 @@ void Axp192Component::enable_irq(IrqType irq) {
   load_register(RegisterLocations::IRQ_ENABLE_REGISTER4);
   update_register(RegisterLocations::IRQ_ENABLE_REGISTER4, detail::to_int(irq) & 0xFF, ~(detail::to_int(irq)) & 0xFF);
   save_register(RegisterLocations::IRQ_ENABLE_REGISTER4);
+
+  // if (detail::to_int(irq) & 0xFF00000000) {
+  //   ESP_LOGV(this->get_component_source(), "IRQ Register Save: IRQ_ENABLE_REGISTER5 value: 0%02X, mask: 0%02X",
+  //            (detail::to_int(irq) >> 32) & 0xFF, ~(detail::to_int(irq) >> 32) & 0xFF);
+  //   load_register(RegisterLocations::IRQ_ENABLE_REGISTER5);
+  //   update_register(RegisterLocations::IRQ_ENABLE_REGISTER5, (detail::to_int(irq) >> 32) & 0xFF,
+  //                   ~(detail::to_int(irq) >> 32) & 0xFF);
+  //   save_register(RegisterLocations::IRQ_ENABLE_REGISTER5);
+  // }
 }
 #endif
 
@@ -685,6 +745,7 @@ void Axp192Component::publish_helper_(MonitorType type, bool state) {
 void Axp192Component::register_irq(IrqType type, Axp192BinarySensor *irq) {
 #ifdef USE_AXP92_BINARY_SENSOR
   irqs_.insert(std::make_pair(type, irq));
+  this->enable_irq(type);
 #endif
 }
 
@@ -710,9 +771,7 @@ void Axp192Component::register_monitor(MonitorType type, Axp192BinarySensor *mon
 #ifdef USE_AXP92_BINARY_SENSOR
   monitors_.insert(std::make_pair(type, monitor));
 #endif
-}
-
-float Axp192Component::get_setup_priority() const { return setup_priority::BUS; };
+};
 
 }  // namespace axp192
 }  // namespace esphome

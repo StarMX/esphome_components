@@ -6,7 +6,7 @@
 namespace esphome {
 namespace axp192 {
 
-float Axp192Switch::get_setup_priority() const { return setup_priority::HARDWARE; };
+float Axp192Switch::get_setup_priority() const { return setup_priority::DATA; };
 
 void Axp192Switch::set_output(OutputPin pin) { pin_ = pin; }
 
