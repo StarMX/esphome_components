@@ -14,7 +14,8 @@ CONF_PREAMBLE_LENGTH='preamble_length' #前导码长度
 CONF_BANDWIDTH = "bandwidth" #带宽
 CONF_SPREADING_FACTOR="spreading_factor" #扩频因子，决定了数据传输的速率和抗干扰能力
 CONF_CODING_RATE="coding_rate" #编码率
-
+CONF_ENABLE_CRC = "enable_crc"
+CONF_ENABLE_ASYNC = "enable_async"
 CONF_ON_DATA_RECEIVED = "on_data_received"
 CONF_LORA_MESSAGE = "message"
 
@@ -38,9 +39,12 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_FREQUENCY, default=433000000): cv.int_range(min=410000000, max=525000000),
             cv.Optional(CONF_BANDWIDTH, default=7): cv.int_range(min=0, max=9),
             cv.Optional(CONF_TX_POWER, default=17): cv.int_range(min=2, max=20),
-            cv.Optional(CONF_PREAMBLE_LENGTH, default=8): cv.int_range(min=6, max=255),
+            cv.Optional(CONF_PREAMBLE_LENGTH, default=8): cv.int_range(min=6, max=65535),
             cv.Optional(CONF_SPREADING_FACTOR, default=7): cv.int_range(min=6, max=12),
             cv.Optional(CONF_CODING_RATE, default=5): cv.int_range(min=5, max=8),
+            cv.Optional(CONF_ENABLE_CRC, default=False): cv.boolean,
+            cv.Optional(CONF_ENABLE_ASYNC, default=False): cv.boolean,
+            cv.Required(CONF_CS_PIN): pins.internal_gpio_output_pin_schema,
             cv.Optional(CONF_ON_DATA_RECEIVED): automation.validate_automation(
                 {
                     cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(
@@ -67,13 +71,17 @@ async def to_code(config):
     cg.add(var.set_preamble_length(config[CONF_PREAMBLE_LENGTH]))
     cg.add(var.set_spreading_factor(config[CONF_SPREADING_FACTOR]))
     cg.add(var.set_coding_rate(config[CONF_CODING_RATE]))
+    cg.add(var.set_enable_crc(config[CONF_ENABLE_CRC]))
+    cg.add(var.set_enable_async(config[CONF_ENABLE_ASYNC]))
     for conf in config.get(CONF_ON_DATA_RECEIVED, []):
         trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
+        # await automation.build_automation(
+        #     trigger, [(cg.const_char_ptr, "data"),(cg.uint8, "length")], conf
+        # )
         await automation.build_automation(
-            trigger, [(cg.const_char_ptr, "data"),(cg.uint8, "length")], conf
+            trigger, [(cg.std_string, "data"),(cg.size_t, "length")], conf
         )
-
-
+    cg.add_define("USE_LORA")
 
 LoraSendAction = lora_ns.class_("LoraSendAction", automation.Action)
 @automation.register_action(

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "esphome/components/spi/spi.h"
-
+// #define CONFIG_LORA_ENABLE_CRC
 namespace esphome {
 namespace lora {
 
@@ -34,28 +34,21 @@ class SX127x : public PollingComponent,
   void set_preamble_length(uint8_t preamble_length) { this->preamble_length_ = preamble_length; }
   void set_spreading_factor(uint8_t spreading_factor) { this->spreading_factor_ = spreading_factor; }
   void set_coding_rate(uint8_t coding_rate) { this->coding_rate_ = coding_rate; }
+  void set_implicit_header_mode(bool implicit_header_mode) { this->implicitHeaderMode_ = implicit_header_mode; }
+  void set_enable_crc(bool enable_crc) { this->enable_crc_ = enable_crc; }
+  void set_enable_async(bool enable_async) { this->enable_async = enable_async; }
 
   int8_t rssi();
-  void receive();
+  void receive(size_t size = 0);
   int8_t available();
   bool receivePacket(uint8_t *buf, uint8_t size);
-  void sendPacket(uint8_t *buf, uint8_t size, bool async = true);
+  void sendPacket(uint8_t *buf, uint8_t size, bool async);
 
-  void add_on_data_received_callback(std::function<void(const char *, uint8_t)> callback) {
+  void add_on_data_received_callback(std::function<void(std::string, size_t)> callback) {
     this->data_received_callback_.add(std::move(callback));
   }
   void set_send_lora_data(const std::string data) {
-#ifdef CONFIG_LORA_GATEWAY
-    this->enableInvertIQ();
-#else
-    this->disableInvertIQ();
-#endif
-    this->sendPacket((uint8_t *) data.data(), data.size());
-#ifdef CONFIG_LORA_GATEWAY
-    this->disableInvertIQ();
-#else
-    this->enableInvertIQ();
-#endif
+    this->sendPacket((uint8_t *) data.data(), data.size(),this->enable_async);
   }
 
  private:
@@ -72,6 +65,7 @@ class SX127x : public PollingComponent,
   void enableInvertIQ();
   void disableInvertIQ();
   void explicitHeaderMode();
+  void implicitHeaderMode();
   bool isTransmitting();
 
  protected:
@@ -91,13 +85,16 @@ class SX127x : public PollingComponent,
   uint8_t preamble_length_;
   uint8_t spreading_factor_;
   uint8_t coding_rate_;
-  CallbackManager<void(const char *, uint8_t)> data_received_callback_;
+  bool implicitHeaderMode_;
+  bool enable_crc_ = false;
+  bool enable_async = false;
+  CallbackManager<void(std::string, size_t)> data_received_callback_;
 };
 
-class LoraDataReceivedMessageTrigger : public Trigger<const char *, uint8_t> {
+class LoraDataReceivedMessageTrigger : public Trigger<std::string, size_t> {
  public:
   explicit LoraDataReceivedMessageTrigger(SX127x *parent) {
-    parent->add_on_data_received_callback([this](const char *data, uint8_t length) { this->trigger(data, length); });
+    parent->add_on_data_received_callback([this](std::string data, size_t length) { this->trigger(data, length); });
   }
 };
 
@@ -108,8 +105,8 @@ template<typename... Ts> class LoraSendAction : public Action<Ts...> {
 
   void play(Ts... x) {
     auto message = this->message_.value(x...);
-    // parent_->set_send_lora_data(message);
-    parent_->sendPacket((uint8_t *) message.data(), message.size());
+    parent_->set_send_lora_data(message);
+    // parent_->sendPacket((uint8_t *) message.data(), message.size(),false);
   }
 
  protected:
